@@ -1,15 +1,13 @@
 ---
 title: "Replication of Comin, Easterly, and Gong (2010)"
-format: pdf
+format: 
+  pdf:
+    output-file: "wealth-of-nations-replication.pdf"
 execute:
   echo: true
   warning: false
   message: false
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(root.dir = "Downloads/Replication_Wealth_of_Nations")
-```
 
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
@@ -21,9 +19,8 @@ sapply(packages, library, character.only = TRUE)
 Load in the data:
 
 ```{r}
-wb_data = read_csv("world-regions-according-to-the-world-bank.csv")
-setwd("~/Downloads/Replication_Wealth_of_Nations")
-macro_data = read_dta("primitive_aejmacro.dta")
+wb_data = read_csv("../datasets/world-regions-according-to-the-world-bank.csv")
+macro_data = read_dta("../datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
 ```
 
 Merge with World Bank regions:
@@ -97,18 +94,18 @@ mod4 = lm(ly2002 ~ tr1500cc + mena + eur + sa + eap + na + latam,
 mod4_se = vcovCL(mod4, cluster = clusc)
 rob4 = coeftest(mod4, vcov = mod4_se)[, "Std. Error"]
 
-output = stargazer(mod1, mod2, mod3, mod4,
-          se = list(rob1, rob2, rob3, rob4),
-          type = "latex",
-          dep.var.labels = "Log income per capita in 2002",
-          covariate.labels = c("Overall technology adoption level in 1000 BC",
-                               "MENA dummy", "Europe dummy", "South Asia dummy",
-                               "East Asia dummy", "North American dummy",
-                               "Latin America dummy",
-                               "Overall technology adoption level in 1500 AD"),
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          star.char = c("*", "**", "***"),
-          omit.stat = c("f", "ser"))
+#output = stargazer(mod1, mod2, mod3, mod4,
+#          se = list(rob1, rob2, rob3, rob4),
+#          type = "latex",
+#          dep.var.labels = "Log income per capita in 2002",
+#          covariate.labels = c("Overall technology adoption level in 1000 BC",
+#                               "MENA dummy", "Europe dummy", "South Asia dummy",
+#                               "East Asia dummy", "North American dummy",
+#                               "Latin America dummy",
+#                               "Overall technology adoption level in 1500 AD"),
+#          star.cutoffs = c(0.05, 0.01, 0.001),
+#          star.char = c("*", "**", "***"),
+#          omit.stat = c("f", "ser"))
 ```
 
 In both cases, adding the World Bank region dummies reduces the effect size

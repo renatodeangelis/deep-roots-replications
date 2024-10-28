@@ -1,6 +1,8 @@
 ---
 title: "Replication of Guiso, Sapienza, and Zingales (2016)"
-format: pdf
+format: 
+  pdf:
+    output-file: "longterm-persistence-replication.pdf"
 ---
 
 ```{r, output=FALSE}
@@ -13,12 +15,11 @@ sapply(packages, library, character.only = TRUE)
 Load in the data:
 
 ```{r}
-setwd("~/Downloads")
-city_data = read_dta("https://github.com/Jsevillamol/persistence/raw/master/datasets/7_guiso_et_al_data/ltp1F.dta")
-istat_codes = read_delim("Codici-statistici-e-denominazioni-al-01_07_2020 (1).csv", 
+city_data = read_dta("../datasets/3-guiso-sapienza-zingales/ltp1F.dta")
+istat_codes = read_delim("../datasets/3-guiso-sapienza-zingales/Codici-statistici-e-denominazioni-al-01_07_2020 (1)(1).csv", 
                          delim = ";",
                          locale = locale(encoding = "ISO-8859-1"))
-coords = read_csv("https://github.com/Jsevillamol/persistence/raw/master/datasets/7_guiso_et_al_data/places.csv")
+coords = read_csv("../datasets/3-guiso-sapienza-zingales/places.csv")
 ```
 
 Perform necessary merges:

@@ -1,19 +1,25 @@
 ---
 title: "Replication of Voigtländer and Voth (2012)"
-format: pdf
+format: 
+  pdf:
+    output-file: "persecution-perpetuated-replication.pdf"
+execute:
+  echo: true
+  warning: false
+  message: false
 ---
 
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
-             "quantreg")
+             "quantreg", "stargazer")
 sapply(packages, library, character.only = TRUE)
 ```
 
 Load in the data:
 
 ```{r}
-nazi_data = read_dta("https://github.com/Jsevillamol/persistence/raw/master/datasets/5_voigthlander_and_voth_2012_data/Dataset_QJE_Replicate_with_Cities.dta")
+nazi_data = read_dta("../datasets/5-voigtlander-voth/Dataset_QJE_Replicate_with_Cities(1).dta")
 ```
 
 Generate relevant variables:

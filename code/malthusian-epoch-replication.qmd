@@ -1,20 +1,22 @@
 ---
 title: "Replication of Ashraf and Galor (2011)"
-format: pdf
+format: 
+  pdf:
+    output-file: "malthusian-epoch-replication.pdf"
 ---
 
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
-             "quantreg")
+             "quantreg", "stargazer")
 sapply(packages, library, character.only = TRUE)
 ```
 
 Load in the data:
 
 ```{r}
-data = read_dta("20081371_Dataset.dta")
-wb_regions = read_csv("world-regions-according-to-the-world-bank.csv")
+data = read_dta("../datasets/1-ashraf-galor/20081371_Dataset.dta")
+wb_regions = read_csv("../datasets/world-regions-according-to-the-world-bank.csv")
 ```
 
 Merge with World Bank regions:
@@ -69,18 +71,18 @@ mod2 = lm(ln_pd1500 ~ ln_yst + pc_lnar_lnas + ln_abslat +
 mod2_se = vcovHC(mod2, type = "HC1")
 coeftest(mod2, vcov = mod2_se)
 
-output = stargazer(mod1, mod2,
-          se = list(rob1, rob2),
-          type = "latex",
-          dep.var.labels = "Log Population Density in 1500 CE",
-          covariate.labels = c("Log years since Neolithic transition", 
-                               "Log land productivity", "Log absolute latitude",
-                               "Mean distance to nearest coast or river",
-                               "Percentage of land within 100km of coast or river",
-                               "Africa", "Europe", "Asia", "Eur", "SA", "South_10"),
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          star.char = c("*", "**", "***"),
-          omit.stat = c("f", "ser"))
+#output = stargazer(mod1, mod2,
+#          se = list(rob1, rob2),
+#          type = "latex",
+#          dep.var.labels = "Log Population Density in 1500 CE",
+#          covariate.labels = c("Log years since Neolithic transition",
+#                               "Log land productivity", "Log absolute latitude",
+#                               "Mean distance to nearest coast or river",
+#                               "Percentage of land within 100km of coast or river",
+#                               "Africa", "Europe", "Asia", "Eur", "SA", "South_10"),
+#          star.cutoffs = c(0.05, 0.01, 0.001),
+#          star.char = c("*", "**", "***"),
+#          omit.stat = c("f", "ser"))
 ```
 
 
