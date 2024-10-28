@@ -1,6 +1,8 @@
 ---
 title: "Replication of Satyanath, Voigtländer, and Voth (2017)"
-format: pdf
+format: 
+  pdf:
+    output-file: "bowling-for-fascism-replication.pdf"
 execute:
   echo: true
   warning: false
