@@ -1,0 +1,86 @@
+---
+title: "Replication of Guiso, Sapienza, and Zingales (2016)"
+format: pdf
+---
+
+```{r, output=FALSE}
+packages = c("dplyr", "readr", "haven", "estimatr", 
+             "conleyreg", "lmtest", "sandwich", "tibble",
+             "quantreg")
+sapply(packages, library, character.only = TRUE)
+```
+
+Load in the data:
+
+```{r}
+setwd("~/Downloads")
+city_data = read_dta("https://github.com/Jsevillamol/persistence/raw/master/datasets/7_guiso_et_al_data/ltp1F.dta")
+istat_codes = read_delim("Codici-statistici-e-denominazioni-al-01_07_2020 (1).csv", 
+                         delim = ";",
+                         locale = locale(encoding = "ISO-8859-1"))
+coords = read_csv("https://github.com/Jsevillamol/persistence/raw/master/datasets/7_guiso_et_al_data/places.csv")
+```
+
+Perform necessary merges:
+
+```{r}
+istat_codes = istat_codes |>
+   select(`Codice Comune formato numerico`, `Denominazione in italiano`)
+coords = coords |>
+  select(X, Y, name)
+
+city_merged = city_data |>
+  left_join(istat_codes, by = c("istcom" = "Codice Comune formato numerico")) #|>
+#  left_join(coords, by = c("Denominazione in italiano" = "name"))
+
+city_final = city_merged |>
+  filter(dummyroma == 0,
+         regione < 20 | is.na(regione),
+         totassoc_p > 0) |>
+  janitor::clean_names()
+```
+
+Heteroscedasticity?
+
+```{r}
+mod1 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+            costal + nearsea + population + pop2 + gini_income + gini_land, 
+         data = city_final, 
+         weights = population)
+coeftest(mod1, vcov = vcovHC(mod1, type = "HC3"))
+```
+
+Removing outliers:
+
+```{r}
+mod2 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+            costal + nearsea + population + pop2, 
+         data = city_final |> filter(totassoc_p < 75), 
+         weights = population)
+coeftest(mod2, vcov = vcovHC(mod2, type = "HC1"))
+```
+
+
+```{r}
+med = rq(totassoc_p ~ libero_comune_allnord + altitudine + escursione + 
+           costal + nearsea + population + pop2,
+         tau = c(0.1, 0.5, 0.9),
+         data = city_final,
+         weights = population)
+summary(med, se = "boot", R = 1000)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
