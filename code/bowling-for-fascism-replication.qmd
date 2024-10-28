@@ -7,12 +7,6 @@ execute:
   message: false
 ---
 
-Editing as a test.
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(root.dir = "/Users/macbook/Downloads/Replication_Bowling_JPE")
-```
-
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
@@ -23,8 +17,7 @@ sapply(packages, library, character.only = TRUE)
 Load in the data:
 
 ```{r}
-setwd("~/Downloads/Replication_Bowling_JPE")
-nazi_data = read_dta("Dataset_Bowling_Replication_JPE.dta")
+nazi_data = read_dta("../datasets/4-satyanath-voigtlander-voth/Dataset_Bowling_Replication_JPE.dta")
 ```
 
 Generate relevant variables:
