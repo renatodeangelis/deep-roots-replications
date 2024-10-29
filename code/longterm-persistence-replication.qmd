@@ -108,10 +108,12 @@ coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 Implementing Conley and Kelly (2024) using the `spatInfer` package:
 
 ```{r}
+filtered = city_final |> filter(!is.na(X))
+
 optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p,
-            df = city_final |> filter(!is.na(X)),
+            df = filtered,
             max_splines = 7,
             Description = "Social Capital and Association Density")
 ```
@@ -120,8 +122,8 @@ optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione 
 plot_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p,
-           df = city_final |> filter(!is.na(X)),
-           splines=6, 
+           df = filtered,
+           splines = 6, 
            Title="6x6 Tensor Surface of Social Capital")
 ```
 
@@ -131,7 +133,7 @@ Run placebo:
 plbo = placebo(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p,
-            df = city_final |> filter(!is.na(X)),
+            df = filtered,
             splines = 6,
             pc_num = 12,
             nSim = 200)
