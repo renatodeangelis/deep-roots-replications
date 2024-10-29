@@ -27,6 +27,7 @@ Perform necessary merges:
 ```{r}
 istat_codes = istat_codes |>
    select(`Codice Comune formato numerico`, `Denominazione in italiano`)
+
 coords = coords |>
   select(X, Y, name)
 
