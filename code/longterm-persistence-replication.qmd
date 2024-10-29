@@ -8,7 +8,7 @@ format:
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
-             "quantreg")
+             "quantreg", "stringr")
 sapply(packages, library, character.only = TRUE)
 ```
 
@@ -16,24 +16,65 @@ Load in the data:
 
 ```{r}
 city_data = read_dta("../datasets/3-guiso-sapienza-zingales/ltp1F.dta")
-istat_codes = read_delim("../datasets/3-guiso-sapienza-zingales/Codici-statistici-e-denominazioni-al-01_07_2020 (1)(1).csv", 
-                         delim = ";",
-                         locale = locale(encoding = "ISO-8859-1"))
 coords = read_csv("../datasets/3-guiso-sapienza-zingales/places.csv")
+```
+
+Load in comprehensive ISTAT code data: 
+
+```{r}
+codici = read_delim("../datasets/3-guiso-sapienza-zingales/codici-istat.csv", 
+                   delim = ";",
+                   locale = locale(encoding = "ISO-8859-1")) |>
+  janitor::clean_names()
+
+preced = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-precedenti.csv",
+                    delim = ";",
+                    locale = locale(encoding = "ISO-8859-1")) |>
+  janitor::clean_names()
+
+soppr = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-soppressi.csv",
+                   delim = ";",
+                   locale = locale(encoding = "ISO-8859-1")) |>
+  janitor::clean_names()
+
+codici1 = codici |>
+  select(denominazione_in_italiano, 
+         codice_comune_numerico_con_103_province_dal_1995_al_2005) |>
+  rename(codice_comune = codice_comune_numerico_con_103_province_dal_1995_al_2005)
+
+soppr1 = soppr |>
+  select(codice_comune, denominazione_comune) |>
+  mutate(codice_comune = str_replace(codice_comune, "^0+", ""),
+         codice_comune = as.double(codice_comune)) 
+
+preced1 = preced |>
+  select(denominazione_precedente, codice_comune) |>
+  mutate(codice_comune = str_replace(codice_comune, "^0+", ""),
+         codice_comune = as.double(codice_comune)) 
+
+istat = codici1 |>
+  full_join(soppr1, by = c("codice_comune" = "codice_comune",
+                           "denominazione_in_italiano" = "denominazione_comune")) |>
+  full_join(preced1, by = c("codice_comune" = "codice_comune",
+                           "denominazione_in_italiano" = "denominazione_precedente")) |>
+  group_by(codice_comune) |>
+  slice(1) |>
+  ungroup()
 ```
 
 Perform necessary merges:
 
 ```{r}
-istat_codes = istat_codes |>
-   select(`Codice Comune formato numerico`, `Denominazione in italiano`)
-
 coords = coords |>
+  group_by(name) |>
+  filter(population > 0) |>
+  slice(1) |>
+  ungroup() |>
   select(X, Y, name)
 
 city_merged = city_data |>
-  left_join(istat_codes, by = c("istcom" = "Codice Comune formato numerico")) #|>
-#  left_join(coords, by = c("Denominazione in italiano" = "name"))
+  left_join(istat, by = c("istcom" = "codice_comune")) |>
+  left_join(coords, by = c("denominazione_in_italiano" = "name"))
 
 city_final = city_merged |>
   filter(dummyroma == 0,
@@ -49,7 +90,7 @@ mod1 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land, 
          data = city_final, 
          weights = population)
-coeftest(mod1, vcov = vcovHC(mod1, type = "HC3"))
+coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 ```
 
 Removing outliers:
