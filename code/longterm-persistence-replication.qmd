@@ -100,7 +100,7 @@ Estimate Column V of Table 3:
 mod1 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p, 
-         data = city_final, 
+         data = city_final |> filter(!is.na(X)), 
          weights = population)
 coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 ```
@@ -111,9 +111,32 @@ Implementing Conley and Kelly (2024) using the `spatInfer` package:
 optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p,
-            df = city_final_clean,
+            df = city_final |> filter(!is.na(X)),
             max_splines = 7,
             Description = "Social Capital and Association Density")
+```
+
+```{r}
+plot_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+            costal + nearsea + population + pop2 + gini_income + gini_land +
+            income_p,
+           df = city_final |> filter(!is.na(X)),
+           splines=6, 
+           Title="6x6 Tensor Surface of Social Capital")
+```
+
+Run placebo:
+
+```{r}
+plbo = placebo(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+            costal + nearsea + population + pop2 + gini_income + gini_land +
+            income_p,
+            df = city_final |> filter(!is.na(X)),
+            splines = 6,
+            pc_num = 12,
+            nSim = 200)
+
+placebo_table(plbo)
 ```
 
 
