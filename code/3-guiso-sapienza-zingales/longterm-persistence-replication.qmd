@@ -16,8 +16,8 @@ sapply(packages, library, character.only = TRUE)
 Load in the data:
 
 ```{r}
-city_data = read_dta("../datasets/3-guiso-sapienza-zingales/ltp1F.dta")
-coords = read_csv("../datasets/3-guiso-sapienza-zingales/places.csv")
+city_data = read_dta("../../datasets/3-guiso-sapienza-zingales/ltp1F.dta")
+coords = read_csv("../../datasets/3-guiso-sapienza-zingales/places.csv")
 ```
 
 Load in comprehensive ISTAT code data: 
