@@ -83,8 +83,8 @@ coords = coords |>
 
 city_merged = city_data |>
   left_join(istat, by = c("istcom" = "codice_comune")) |>
-  mutate(name = standardize_name(denominazione_in_italiano)) #|>
-#  left_join(coords, by = c("denominazione_in_italiano" = "name"))
+#  mutate(name = standardize_name(denominazione_in_italiano)) |>
+  left_join(coords, by = c("denominazione_in_italiano" = "name"))
 
 city_final = city_merged |>
   filter(dummyroma == 0,
@@ -108,12 +108,6 @@ coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 Implementing Conley and Kelly (2024) using the `spatInfer` package:
 
 ```{r}
-city_final_clean = city_final |>
-  tidyr::drop_na(totassoc_p, libero_comune_allnord, altitudine, escursione,
-          costal, nearsea, population, pop2, gini_income, gini_land, income_p) |>
-  select(totassoc_p, libero_comune_allnord, altitudine, escursione,
-          costal, nearsea, population, pop2, gini_income, gini_land, income_p, X, Y)
-
 optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
             costal + nearsea + population + pop2 + gini_income + gini_land +
             income_p,
