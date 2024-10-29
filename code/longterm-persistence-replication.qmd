@@ -130,26 +130,26 @@ plot_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
 Run placebo:
 
 ```{r}
-plbo = placebo(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-            costal + nearsea + population + pop2 + gini_income + gini_land +
-            income_p,
-            df = filtered,
-            splines = 6,
-            pc_num = 12,
-            nSim = 200)
+#plbo = placebo(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+#            costal + nearsea + population + pop2 + gini_income + gini_land +
+#            income_p,
+#            df = filtered,
+#            splines = 6,
+#            pc_num = 12,
+#            nSim = 200)
 
-placebo_table(plbo)
+#placebo_table(plbo)
 ```
 
 
 Removing outliers:
 
 ```{r}
-mod2 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-            costal + nearsea + population + pop2 + income_p, 
-         data = city_final |> filter(totassoc_p < 75), 
-         weights = population)
-coeftest(mod2, vcov = vcovHC(mod2, type = "HC1"))
+#mod2 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+#            costal + nearsea + population + pop2 + income_p, 
+#         data = city_final |> filter(totassoc_p < 75), 
+#         weights = population)
+#coeftest(mod2, vcov = vcovHC(mod2, type = "HC1"))
 ```
 
 
