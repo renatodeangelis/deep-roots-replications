@@ -8,7 +8,8 @@ format:
 ```{r, output=FALSE}
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
-             "quantreg", "stringr")
+             "quantreg", "stringr", "spatInfer", "modelsummary",
+             "ggplot2", "tinytable")
 sapply(packages, library, character.only = TRUE)
 ```
 
@@ -65,54 +66,72 @@ istat = codici1 |>
 Perform necessary merges:
 
 ```{r}
+#standardize_name = function(name) {
+#  name |>
+#    str_to_lower() |>
+#    str_replace_all("[[:punct:]]", "") |>
+#    str_squish()
+#}
+
 coords = coords |>
   group_by(name) |>
-  filter(population > 0) |>
+  filter(n() == 1 | population > 0) |>
   slice(1) |>
   ungroup() |>
-  select(X, Y, name)
+  select(X, Y, name) #|>
+#  mutate(name = standardize_name(name))
 
 city_merged = city_data |>
   left_join(istat, by = c("istcom" = "codice_comune")) |>
-  left_join(coords, by = c("denominazione_in_italiano" = "name"))
+  mutate(name = standardize_name(denominazione_in_italiano)) #|>
+#  left_join(coords, by = c("denominazione_in_italiano" = "name"))
 
 city_final = city_merged |>
   filter(dummyroma == 0,
          regione < 20 | is.na(regione),
          totassoc_p > 0) |>
-  janitor::clean_names()
+  janitor::clean_names() |>
+  rename(X = x, Y = y)
 ```
 
-Heteroscedasticity?
+Estimate Column V of Table 3:
 
 ```{r}
 mod1 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-            costal + nearsea + population + pop2 + gini_income + gini_land, 
+            costal + nearsea + population + pop2 + gini_income + gini_land +
+            income_p, 
          data = city_final, 
          weights = population)
 coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 ```
 
+Implementing Conley and Kelly (2024) using the `spatInfer` package:
+
+```{r}
+city_final_clean = city_final |>
+  tidyr::drop_na(totassoc_p, libero_comune_allnord, altitudine, escursione,
+          costal, nearsea, population, pop2, gini_income, gini_land, income_p) |>
+  select(totassoc_p, libero_comune_allnord, altitudine, escursione,
+          costal, nearsea, population, pop2, gini_income, gini_land, income_p, X, Y)
+
+optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
+            costal + nearsea + population + pop2 + gini_income + gini_land +
+            income_p,
+            df = city_final_clean,
+            max_splines = 7,
+            Description = "Social Capital and Association Density")
+```
+
+
 Removing outliers:
 
 ```{r}
 mod2 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-            costal + nearsea + population + pop2, 
+            costal + nearsea + population + pop2 + income_p, 
          data = city_final |> filter(totassoc_p < 75), 
          weights = population)
 coeftest(mod2, vcov = vcovHC(mod2, type = "HC1"))
 ```
-
-
-```{r}
-med = rq(totassoc_p ~ libero_comune_allnord + altitudine + escursione + 
-           costal + nearsea + population + pop2,
-         tau = c(0.1, 0.5, 0.9),
-         data = city_final,
-         weights = population)
-summary(med, se = "boot", R = 1000)
-```
-
 
 
 
