@@ -23,17 +23,17 @@ coords = read_csv("../../datasets/3-guiso-sapienza-zingales/places.csv")
 Load in comprehensive ISTAT code data: 
 
 ```{r}
-codici = read_delim("../datasets/3-guiso-sapienza-zingales/codici-istat.csv", 
+codici = read_delim("../../datasets/3-guiso-sapienza-zingales/codici-istat.csv", 
                    delim = ";",
                    locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
 
-preced = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-precedenti.csv",
+preced = read_delim("../../datasets/3-guiso-sapienza-zingales/comuni-precedenti.csv",
                     delim = ";",
                     locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
 
-soppr = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-soppressi.csv",
+soppr = read_delim("../../datasets/3-guiso-sapienza-zingales/comuni-soppressi.csv",
                    delim = ";",
                    locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
