@@ -28,3 +28,15 @@ mod1 = lm(logpgp95 ~ sjb1500,
 mod2 = lm(logpgp95 ~ sjb1500 + wb_region + malaria_dummy,
           data = colony_final |> filter(baserf == 1))
 
+mod3 = mod1 = lm(logpgp95 ~ sjb1500 + lat_abst + coal + landlock + island + 
+                   goldm + iron + silv +  zinc + oilres + steplow + deslow + 
+                   stepmid + desmid + f_french + f_spain + f_pothco + f_dutch + 
+                   catho80 + muslim80 + notmcp80,
+                 data = colony_final |> filter(baserf == 1))
+
+
+
+
+
+
+
