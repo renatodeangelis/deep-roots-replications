@@ -14,9 +14,16 @@ malaria = read_dta("datasets/6-nunn/country.dta") |>
 
 colony_final = colony_data |>
   left_join(malaria, by = c("shortnam" = "code")) |>
-  left_join(wb_regions, by = c("shortnam" = "code")) #|>
+  left_join(wb_regions, by = c("shortnam" = "code")) |>
   mutate(wb_region = case_when(
     shortnam %in% c("ROM", "YUG") ~ "Europe and Central Asia",
     shortnam == "TWN" ~ "East Asia and Pacific",
     shortnam == "ZAR" ~ "Sub-Saharan Africa",
-    TRUE ~ wb_region))
+    TRUE ~ wb_region),
+    malaria_dummy = malfal <= 0.05)
+
+mod1 = lm(logpgp95 ~ sjb1500, 
+          data = colony_final |> filter(baserf == 1))
+
+mod2 = lm(logpgp95 ~ sjb1500 + wb_region + malaria_dummy,
+          data = colony_final |> filter(baserf == 1))
