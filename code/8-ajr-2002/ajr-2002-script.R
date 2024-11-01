@@ -27,3 +27,4 @@ mod1 = lm(logpgp95 ~ sjb1500,
 
 mod2 = lm(logpgp95 ~ sjb1500 + wb_region + malaria_dummy,
           data = colony_final |> filter(baserf == 1))
+
