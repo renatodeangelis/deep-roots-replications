@@ -33,25 +33,17 @@ output = stargazer(
   type = "latex",
   title = "Regression Results",
   dep.var.labels = "Log GDP per capita (PPP), 1995",
-  covariate.labels = c("Log European settler mortality", "Latitude"),
-  omit.stat = c("f"),  # Omit F-statistic and standard error
+  covariate.labels = c("Urbanization in 1500", "Malaria"),
+  omit.stat = c("f"),
   add.lines = list(
     c("Observations", 
-      nrow(colony_data |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95))), 
-      nrow(colony_data |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95))), 
-      nrow(colony_final |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95)))),
-    c("R-squared", 
-      round(summary(mod1)$r.squared, 3),
-      round(summary(mod2)$r.squared, 3),
-      round(summary(mod3)$r.squared, 3)),
-    c("wb_region Controls", "", "", "\\checkmark")  # Checkmark for wb_region in Model 3
+      nrow(colony_final |> filter(baserf == 1)), 
+      nrow(colony_final |> filter(baserf == 1))), 
+    c("wb_region Controls", "", "\\checkmark")
   ),
   star.cutoffs = c(0.05, 0.01, 0.001),
   no.space = TRUE
 )
-
-
-
 
 
 
