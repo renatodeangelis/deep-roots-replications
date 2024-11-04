@@ -4,20 +4,20 @@ packages = c("dplyr", "readr", "haven", "estimatr",
              "ggplot2", "tinytable")
 sapply(packages, library, character.only = TRUE)
 
-city_data = read_dta("../datasets/3-guiso-sapienza-zingales/ltp1F.dta")
-coords = read_csv("../datasets/3-guiso-sapienza-zingales/places.csv")
+city_data = read_dta("datasets/3-guiso-sapienza-zingales/ltp1F.dta")
+coords = read_csv("datasets/3-guiso-sapienza-zingales/places.csv")
 
-codici = read_delim("../datasets/3-guiso-sapienza-zingales/codici-istat.csv", 
+codici = read_delim("datasets/3-guiso-sapienza-zingales/codici-istat.csv", 
                     delim = ";",
                     locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
 
-preced = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-precedenti.csv",
+preced = read_delim("datasets/3-guiso-sapienza-zingales/comuni-precedenti.csv",
                     delim = ";",
                     locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
 
-soppr = read_delim("../datasets/3-guiso-sapienza-zingales/comuni-soppressi.csv",
+soppr = read_delim("datasets/3-guiso-sapienza-zingales/comuni-soppressi.csv",
                    delim = ";",
                    locale = locale(encoding = "ISO-8859-1")) |>
   janitor::clean_names()
@@ -80,25 +80,7 @@ mod1 = lm(totassoc_p ~ libero_comune_allnord + altitudine + escursione +
           weights = population)
 coeftest(mod1, vcov = vcovHC(mod1, type = "HC1"))
 
-filtered = city_final |> filter(!is.na(X))
-
-optimal_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-                costal + nearsea + population + pop2 + gini_income + gini_land +
-                income_p,
-              df = filtered,
-              max_splines = 7,
-              Description = "Social Capital and Association Density")
-
-plot_basis(fm = totassoc_p ~ libero_comune_allnord + altitudine + escursione +
-             costal + nearsea + population + pop2 + gini_income + gini_land +
-             income_p,
-           df = filtered,
-           splines = 6, 
-           Title="6x6 Tensor Surface of Social Capital")
-
-
-
-
+summary(mod1)
 
 
 
