@@ -25,14 +25,30 @@ colony_final = colony_data |>
 mod1 = lm(logpgp95 ~ sjb1500, 
           data = colony_final |> filter(baserf == 1))
 
-mod2 = lm(logpgp95 ~ sjb1500 + wb_region + malaria_dummy,
+mod2 = lm(logpgp95 ~ sjb1500 + malaria_dummy + wb_region,
           data = colony_final |> filter(baserf == 1))
 
-mod3 = mod1 = lm(logpgp95 ~ sjb1500 + lat_abst + coal + landlock + island + 
-                   goldm + iron + silv +  zinc + oilres + steplow + deslow + 
-                   stepmid + desmid + f_french + f_spain + f_pothco + f_dutch + 
-                   catho80 + muslim80 + notmcp80,
-                 data = colony_final |> filter(baserf == 1))
+output = stargazer(
+  mod1, mod2,
+  type = "latex",
+  title = "Regression Results",
+  dep.var.labels = "Log GDP per capita (PPP), 1995",
+  covariate.labels = c("Log European settler mortality", "Latitude"),
+  omit.stat = c("f"),  # Omit F-statistic and standard error
+  add.lines = list(
+    c("Observations", 
+      nrow(colony_data |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95))), 
+      nrow(colony_data |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95))), 
+      nrow(colony_final |> filter(excolony == 1, !is.na(extmort4), !is.na(logpgp95)))),
+    c("R-squared", 
+      round(summary(mod1)$r.squared, 3),
+      round(summary(mod2)$r.squared, 3),
+      round(summary(mod3)$r.squared, 3)),
+    c("wb_region Controls", "", "", "\\checkmark")  # Checkmark for wb_region in Model 3
+  ),
+  star.cutoffs = c(0.05, 0.01, 0.001),
+  no.space = TRUE
+)
 
 
 
