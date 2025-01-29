@@ -19,8 +19,8 @@ sapply(packages, library, character.only = TRUE)
 Load in the data:
 
 ```{r}
-wb_data = read_csv("../datasets/world-regions-according-to-the-world-bank.csv")
-macro_data = read_dta("../datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
+wb_data = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
+macro_data = read_dta("datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
 ```
 
 Merge with World Bank regions:
@@ -151,6 +151,7 @@ mod10_se = vcovCL(mod10, cluster = clusc)
 rob10 = coeftest(mod10, vcov = mod10_se)[, "Std. Error"]
 ```
 
+The following code replicates table 7A. 
 
-
+The following code replicates table 7B.
 

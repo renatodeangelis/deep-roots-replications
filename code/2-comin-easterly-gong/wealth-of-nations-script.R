@@ -3,8 +3,8 @@ packages = c("dplyr", "readr", "haven", "estimatr",
              "quantreg", "stargazer")
 sapply(packages, library, character.only = TRUE)
 
-wb_data = read_csv("../datasets/world-regions-according-to-the-world-bank.csv")
-macro_data = read_dta("../datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
+wb_data = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
+macro_data = read_dta("datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
 
 macro_strip = lapply(macro_data, function(col) {
   attr(col, "format.stata") <- NULL
@@ -104,6 +104,31 @@ mod10 = lm(ly2002 ~ t3mig + mena + eur + sa + eap + na + latam,
            data = macro_final |> filter(!is.na(clusc)))
 mod10_se = vcovCL(mod10, cluster = clusc)
 rob10 = coeftest(mod10, vcov = mod10_se)[, "Std. Error"]
+
+# Replicating Table 7A, columns 3, 4
+
+mod11 = lm(tr1500cc ~ tr1 + eu + af + as + am,
+           data = macro_final)
+mod11_se = vcovCL(mod11, cluster = clus1000)
+coeftest(mod11, vcov = mod11_se)
+
+mod12 = lm(tr1500cc ~ tr2 + eu + af + as + am,
+           data = macro_final)
+mod12_se = vcovCL(mod12, cluster = clus1000)
+coeftest(mod12, vcov = mod12_se)
+
+# I think they switched them haha
+
+mod13 = lm(tr1500cc ~ tr1 + mena + eur + sa + eap + na + latam,
+           data = macro_final)
+mod13_se = vcovCL(mod13, cluster = clus1000)
+coeftest(mod13, vcov = mod13_se)
+
+mod14 = lm(tr1500cc ~ tr2 + mena + eur + sa + eap + na + latam,
+           data = macro_final)
+mod14_se = vcovCL(mod14, cluster = clus1000)
+coeftest(mod14, vcov = mod14_se)
+
 
 
 
