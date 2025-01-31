@@ -117,8 +117,6 @@ mod12 = lm(tr1500cc ~ tr2 + eu + af + as + am,
 mod12_se = vcovCL(mod12, cluster = clus1000)
 coeftest(mod12, vcov = mod12_se)
 
-# I think they switched them haha
-
 mod13 = lm(tr1500cc ~ tr1 + mena + eur + sa + eap + na + latam,
            data = macro_final)
 mod13_se = vcovCL(mod13, cluster = clus1000)
@@ -129,6 +127,17 @@ mod14 = lm(tr1500cc ~ tr2 + mena + eur + sa + eap + na + latam,
 mod14_se = vcovCL(mod14, cluster = clus1000)
 coeftest(mod14, vcov = mod14_se)
 
+# Replicating Table 7B, column 2
+
+mod15 = lm(tr2 ~ tr1 + eu + af + as + am,
+           data = macro_final)
+mod15_se = vcovCL(mod15, cluster = clus1000)
+coeftest(mod15, vcov = mod15_se)
+
+mod16 = lm(tr2 ~ tr1 + mena + eur + sa + eap + na + latam,
+           data = macro_final)
+mod16_se = vcovCL(mod16, cluster = clus1000)
+coeftest(mod16, vcov = mod16_se)
 
 
 
