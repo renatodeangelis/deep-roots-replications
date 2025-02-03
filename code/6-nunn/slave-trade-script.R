@@ -1,12 +1,14 @@
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
              "quantreg", "stringr", "spatInfer", "modelsummary",
-             "ggplot2", "tinytable", "plm", "stargazer")
+             "ggplot2", "tinytable", "plm", "stargazer", "readxl")
 lapply(packages, library, character.only = TRUE)
 
-slave_data = read_dta("../../datasets/6-nunn/slave_trade_QJE.dta")
-
-malaria = read_dta("../../datasets/6-nunn/country.dta")
+slave_data = read_dta("Datasets/6-nunn/slave_trade_QJE.dta")
+malaria = read_dta("Datasets/6-nunn/country.dta")
+pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
+  filter(year == 2000) |>
+  mutate(countrycode = ifelse(countrycode == "COD", "ZAR", countrycode))
 
 malaria_final = malaria |>
   select(code, malfal)
@@ -14,7 +16,8 @@ malaria_final = malaria |>
 slave_final = slave_data |>
   left_join(malaria_final, by = c("isocode" = "code")) |>
   mutate(congo_dummy = isocode == "ZAR",
-         malaria_dummy = malfal > 0.5)
+         malaria_dummy = malfal > 0.5) |>
+  left_join(pwt_init, by = c("isocode" = "countrycode"))
 
 mod1 = lm(ln_maddison_pcgdp2000 ~ ln_export_area + colony0 + colony1 + colony2 +
             colony3 + colony4 + colony5 + colony6,
