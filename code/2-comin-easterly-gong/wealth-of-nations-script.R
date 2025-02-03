@@ -6,7 +6,7 @@ sapply(packages, library, character.only = TRUE)
 wb_data = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
 macro_data = read_dta("datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
 pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
-  filter(year == 2000)
+  filter(year == 2002)
 
 macro_strip = lapply(macro_data, function(col) {
   attr(col, "format.stata") <- NULL
@@ -15,7 +15,7 @@ macro_strip = lapply(macro_data, function(col) {
 
 macro_strip = as.data.frame(macro_strip)
 
-wb_regions = wb_data |> 
+wb_regions = wb_data |>
   janitor::clean_names() |>
   select(-year, -code) |>
   rename(wb_region = world_region_according_to_the_world_bank,
