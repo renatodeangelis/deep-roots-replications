@@ -6,7 +6,29 @@ sapply(packages, library, character.only = TRUE)
 wb_data = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
 macro_data = read_dta("datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
 pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
-  filter(year == 2002)
+  filter(year == 2002) |>
+  mutate(country = case_when(
+    country == "Bolivia (Plurinational State of)" ~ "Bolivia",
+    country == "D.R. of the Congo" ~ "Democratic Republic of the Congo",
+    country == "Congo" ~ "Republic of the Congo",
+    country == "Côte d'Ivoire" ~ "Cote D'Ivoire",
+    country == "Czech Republic" ~ "Czechoslovakia",
+    country == "Eswatini" ~ "Swaziland",
+    country == "Gambia" ~ "The Gambia",
+    country == "China, Hong Kong SAR" ~ "Hong Kong",
+    country == "Iran (Islamic Republic of)" ~ "Iran",
+    country == "Republic of Korea" ~ "Korea",
+    country == "Lao People's DR" ~ "Laos",
+    country == "North Macedonia" ~ "Macedonia",
+    country == "Republic of Moldova" ~ "Moldova",
+    country == "Russian Federation" ~ "Russia",
+    country == "Syrian Arab Republic" ~ "Syria",
+    country == "U.R. of Tanzania: Mainland" ~ "Tanzania",
+    country == "United Kingdom" ~ "England",
+    country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
+    country == "Viet Nam" ~ "Vietnam",
+    TRUE ~ country
+  ))
 
 macro_strip = lapply(macro_data, function(col) {
   attr(col, "format.stata") <- NULL
@@ -38,20 +60,18 @@ macro_final = left_join(macro_strip, wb_regions,
          eap = as.integer(wb_region == "East Asia and Pacific"),
          na = as.integer(wb_region == "North America"),
          latam = as.integer(wb_region == "Latin America and Caribbean"),
-         afr = as.integer(wb_region == "Sub-Saharan Africa"))
-
-tryout = macro_final |>
+         afr = as.integer(wb_region == "Sub-Saharan Africa")) |>
   left_join(pwt_init, by = "country")
 
 clus1000 = macro_final$clus1000
 
 mod1 = lm(ly2002 ~ tr1, 
-                 data = macro_final)
+               data = macro_final)
 mod1_se = vcovCL(mod1, cluster = clus1000)
 rob1 = coeftest(mod1, vcov = mod1_se)[, "Std. Error"]
 
 mod2 = lm(ly2002 ~ tr1 + mena + eur + sa + eap + na + latam,
-                 data = macro_final)
+            data = macro_final)
 mod2_se = vcovCL(mod2, cluster = clus1000)
 rob2 = coeftest(mod2, vcov = mod2_se)[, "Std. Error"]
 
@@ -143,6 +163,3 @@ mod16 = lm(tr2 ~ tr1 + mena + eur + sa + eap + na + latam,
            data = macro_final)
 mod16_se = vcovCL(mod16, cluster = clus1000)
 coeftest(mod16, vcov = mod16_se)
-
-
-
