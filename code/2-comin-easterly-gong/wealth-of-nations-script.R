@@ -1,10 +1,12 @@
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
-             "quantreg", "stargazer")
+             "quantreg", "stargazer", "readxl")
 sapply(packages, library, character.only = TRUE)
 
 wb_data = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
 macro_data = read_dta("datasets/2-comin-easterly-gong/primitive_aejmacro.dta")
+pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
+  filter(year == 2000)
 
 macro_strip = lapply(macro_data, function(col) {
   attr(col, "format.stata") <- NULL
@@ -37,6 +39,9 @@ macro_final = left_join(macro_strip, wb_regions,
          na = as.integer(wb_region == "North America"),
          latam = as.integer(wb_region == "Latin America and Caribbean"),
          afr = as.integer(wb_region == "Sub-Saharan Africa"))
+
+tryout = macro_final |>
+  left_join(pwt_init, by = "country")
 
 clus1000 = macro_final$clus1000
 
