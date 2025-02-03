@@ -1,7 +1,7 @@
 packages = c("dplyr", "readr", "haven", "estimatr", 
              "conleyreg", "lmtest", "sandwich", "tibble",
              "quantreg", "stringr", "spatInfer", "modelsummary",
-             "ggplot2", "tinytable", "plm", "stargazer")
+             "ggplot2", "tinytable", "plm", "stargazer", "readxl")
 lapply(packages, library, character.only = TRUE)
 
 colony_data = read_dta("datasets/8-ajr-2002/maketable3.dta")
@@ -11,6 +11,9 @@ wb_regions = read_csv("datasets/world-regions-according-to-the-world-bank.csv") 
   rename(wb_region = world_region_according_to_the_world_bank)
 malaria = read_dta("datasets/6-nunn/country.dta") |>
   select(code, malfal)
+pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
+  filter(year == 1995) |>
+  mutate(countrycode = ifelse(countrycode == "ROU", "ROM", countrycode))
 
 colony_final = colony_data |>
   left_join(malaria, by = c("shortnam" = "code")) |>
@@ -20,7 +23,8 @@ colony_final = colony_data |>
     shortnam == "TWN" ~ "East Asia and Pacific",
     shortnam == "ZAR" ~ "Sub-Saharan Africa",
     TRUE ~ wb_region),
-    malaria_dummy = malfal <= 0.05)
+    malaria_dummy = malfal <= 0.05) |>
+  left_join(pwt_init, by = c("shortnam" = "countrycode"))
 
 mod1 = lm(logpgp95 ~ sjb1500, 
           data = colony_final |> filter(baserf == 1))
