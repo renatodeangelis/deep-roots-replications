@@ -44,7 +44,7 @@ names_to_remove = c(
   "Upper middle income", "World")
 
 tryout = fertility |>
-  left_join(mortality, by = "Country Name") |>
+  left_join(mortality, by = c("Country Name", "Country Code")) |>
   filter(!(`Country Name` %in% names_to_remove)) |>
-  left_join(rugged, by = c("Country Name" = "country")) #|>
+  left_join(rugged, by = c("Country Code" = "isocode")) #|>
   #left_join(frac, by = c("Country Name" = "Country"))
