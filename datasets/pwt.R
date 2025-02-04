@@ -1,6 +1,7 @@
 library(readxl)
 library(dplyr)
 library(readr)
+library(ggplot2)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
 
@@ -13,5 +14,3 @@ avg = function(x, country, column, start_year, end_year) {
     pull(column) |>
     mean(na.rm = TRUE)
 }
-
-avg(pwt_init, "China", 1960, 2020)
