@@ -1,38 +1,38 @@
 Durlauf et al (2008) variables:
 
 Neoclassical:
-- log real GDP per worker in initial year
-- log average percentahe of working age population in secondary school
-- log average investment to GDP ratio
-- log population growth plus 0.05 over corresponding periods
+- ~~log real GDP per worker in initial year~~
+- log average percentage of working age population in secondary school
+- ~~log average investment to GDP ratio~~
+- ~~log population growth plus 0.05 over corresponding periods~~
 
 Demography:
-- reciprocal of life expectancy at age 1
-- log of total fertility rate
+- ~~reciprocal of life expectancy at age 1~~
+- ~~log of total fertility rate~~
 
 Macroeconomic:
-- within-period ratio of exports plus imports to GDP (filtered for the relaton of this ratio to logs of population and area)
+- ~~within-period ratio of exports plus imports to GDP (filtered for the relaton of this ratio to logs of population and area)~~
 - inflation rate for period
-- wtihin-period ratio of government consumption to GDP
+- ~~within-period ratio of government consumption to GDP~~
 
 Religion:
 - shares for Eastern, Hindu, Jewish, Muslim, Orthodox, Protestant, and others
 
 Geography:
-- percentage of country's land area classified as tropical/subtropical under Koppen-Geiger climate classification
-- percentage of country's land area within 100km of ice-free coast
+- ~~percentage of country's land area classified as tropical/subtropical under Koppen-Geiger climate classification~~
+- ~~percentage of country's land area within 100km of ice-free coast~~
 
 Fractionalization:
-- linguistic fractionalization, per Alesina et al (2003)
+- ~~linguistic fractionalization, per Alesina et al (2003)~~
 - 'degree of tension within a country attributable to racial, nationality, or language divisions', per ICRG
 
 Institutions:
-- risk of expropriation of private investments, per Acemoglu et al (2001)
+- ~~risk of expropriation of private investments, per Acemoglu et al (2001)~~
 - within-period average constraints on executive power institute, per Djankov et al (2003)
 
 Unexplained regional heterogeneity:
-- dummies for East Asian, Sub-Saharan African, and Latin American countries
+- ~~dummies for East Asian, Sub-Saharan African, and Latin American countries~~
 
 Initial heterogeneity:
-- log of initial income per worker
-- initial human capital
+- ~~log of initial income per worker~~
+- ~~initial human capital~~
