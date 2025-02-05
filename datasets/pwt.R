@@ -3,6 +3,7 @@ library(dplyr)
 library(readr)
 library(ggplot2)
 library(stringr)
+library(tidyr)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
 rugged = read_csv("Datasets/rugged_data.csv")
@@ -101,3 +102,24 @@ intermed = tryout |>
   select(-fertility_69, -life_expectancy_69,
          -indicator_name_x, -indicator_name_y) |>
   relocate(country_name, country_code)
+
+intermed_panel = intermed |>
+  pivot_longer(
+    cols = starts_with("fertility_"),
+    names_to = "year",
+    names_prefix = "fertility_",
+    values_to = "fertility"
+  ) |>
+  pivot_longer(
+    cols = starts_with("life_expectancy_"),
+    names_to = "year_le",
+    names_prefix = "life_expectancy_",
+    values_to = "life_expectancy"
+  ) |>
+  filter(year == year_le) |>
+  select(-year_le, -rgdppc_2000, -rgdppc_1950_m,
+         -rgdppc_1975_m, -rgdppc_2000_m, -rgdppc_1950_2000_m) |>
+  relocate(country_name, country_code, year)
+
+pwt_final = intermed_panel |>
+  left_join(pwt_inter, by = c("country_code" = "countrycode", "country_name = country", "year = year"))
