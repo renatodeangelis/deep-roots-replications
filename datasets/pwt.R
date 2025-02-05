@@ -122,4 +122,7 @@ intermed_panel = intermed |>
   relocate(country_name, country_code, year)
 
 pwt_final = intermed_panel |>
-  left_join(pwt_inter, by = c("country_code" = "countrycode", "country_name = country", "year = year"))
+  mutate(year = as.numeric(year)) |>
+  left_join(pwt_inter, by = c("country_code" = "countrycode",
+                              "year" = "year")) |>
+  relocate(pop_1400, .after = pop)
