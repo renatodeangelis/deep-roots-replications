@@ -11,6 +11,60 @@ fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3)
 mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3)
 frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1)
 
+religions_to_remove = c(
+  ". . Mahayanists", ". . unaffiliated Christians",
+  ". . Vaishnavites", ". . Shaivites", ". . Saktists",
+  ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
+  ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
+  "Christians")
+
+other_religions = c(
+  "Baha'is", "Ethnic religionists", "Spiritists",
+  "Zoroastrians", "New religionists")
+
+eastern_religions = c(
+  "Buddhists", "Confucianists", "Chinese folk-religionists",
+  "Daoists", "Shintoists", "Sikhs", "Jains")
+
+religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
+  slice(-1) |>
+  select(-"Year") |>
+  rename("country" = "...2", "religion" = "...3") |>
+  filter(!(religion %in% religions_to_remove)) |>
+  mutate(across(c(`1970`, `2000`, `2015`, `2020`), as.numeric)) |>
+  mutate(across(c(`1970`, `2000`, `2015`, `2020`), ~replace_na(., 0))) |>
+  mutate(religion = case_when(
+    religion %in% other_religions ~ "other",
+    religion %in% eastern_religions ~ "eastern",
+    religion %in% c("Agnostics", "Atheists") ~ "non-religious",
+    TRUE ~ religion
+  )) |>
+  group_by(country, religion) |>
+  summarise(across(everything(), sum), .groups = "drop") |>
+  ungroup() |>
+  mutate(religion = case_when(
+    religion == ". . Catholics" ~ "catholic",
+    religion == ". . Protestants" ~ "protestant",
+    religion == ". . Orthodox" ~ "orthodox",
+    religion == "Muslims" ~ "muslim",
+    religion == "Jews" ~ "jewish",
+    religion == "Hindus" ~ "hindu",
+    TRUE ~ religion
+  )) |>
+  pivot_longer(
+    cols = c(`1970`, `2000`, `2015`, `2020`),
+    names_to = "year",
+    values_to = "value"
+  ) |>
+  group_by(country, year) |>
+  pivot_wider(
+    names_from = religion,
+    values_from = value
+  ) |>
+  ungroup() |>
+  select(-`NA`)
+
+
 pwt_inter = pwt_init |>
   filter(!is.na(rgdpe))
 
@@ -126,3 +180,7 @@ pwt_final = intermed_panel |>
   left_join(pwt_inter, by = c("country_code" = "countrycode",
                               "year" = "year")) |>
   relocate(pop_1400, .after = pop)
+
+pwt_relig = pwt_final |>
+  left_join(religion |> mutate(year = as.numeric(year)),
+            by = c("country_name" = "country", "year" = "year"))
