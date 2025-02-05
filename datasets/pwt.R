@@ -180,4 +180,12 @@ pwt_final = intermed_panel |>
 
 pwt_relig = pwt_final |>
   left_join(religion |> mutate(year = as.numeric(year)),
-            by = c("country_name" = "country", "year" = "year"))
+            by = c("country_name" = "country", "year" = "year")) |>
+  group_by(country_name) |>
+  mutate(across(c(catholic:other),
+           ~case_when(
+             year <= 1985 ~ .x[match(1970, year)],
+             year > 1985 & year <= 2008 ~ .x[match(2000, year)], 
+             year > 2008 & year <= 2018 ~ .x[match(2015, year)],
+             year > 2018 ~ .x[match(2020, year)]
+           )))
