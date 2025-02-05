@@ -16,7 +16,7 @@ Macroeconomic:
 - ~~within-period ratio of government consumption to GDP~~
 
 Religion:
-- shares for Eastern, Hindu, Jewish, Muslim, Orthodox, Protestant, and others
+- ~~shares for Eastern, Hindu, Jewish, Muslim, Orthodox, Protestant, and others~~
 
 Geography:
 - ~~percentage of country's land area classified as tropical/subtropical under Koppen-Geiger climate classification~~
