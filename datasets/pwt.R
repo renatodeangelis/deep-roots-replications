@@ -2,6 +2,7 @@ library(readxl)
 library(dplyr)
 library(readr)
 library(ggplot2)
+library(stringr)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
 rugged = read_csv("Datasets/rugged_data.csv")
@@ -41,10 +42,62 @@ names_to_remove = c(
   "Latin America & the Caribbean (IDA & IBRD countries)",
   "Middle East & North Africa (IDA & IBRD countries)",
   "South Asia (IDA & IBRD)", "Sub-Saharan Africa (IDA & IBRD countries)",
-  "Upper middle income", "World")
+  "Upper middle income", "World", "Channel Islands", "Curacao", "Isle of Man",
+  "Not classified", "St. Martin (French part)", "Sint Maarten (Dutch part)")
 
 tryout = fertility |>
   left_join(mortality, by = c("Country Name", "Country Code")) |>
   filter(!(`Country Name` %in% names_to_remove)) |>
-  left_join(rugged, by = c("Country Code" = "isocode")) #|>
-  #left_join(frac, by = c("Country Name" = "Country"))
+  left_join(rugged, by = c("Country Code" = "isocode")) |>
+  mutate(`Country Name` = case_when(
+    `Country Name` == "Bahamas, The" ~ "Bahamas",
+    `Country Name` == "Brunei Darussalam" ~ "Brunei",
+    `Country Name` == "Congo, Dem. Rep." ~ "Congo, Dem. Rep. (Zaire)",
+    `Country Name` == "Congo, Rep." ~ "Congo",
+    `Country Name` == "Cabo Verde" ~ "Cape Verde",
+    `Country Name` == "Czechia" ~ "Czech Republic",
+    `Country Name` == "Egypt, Arab Rep." ~ "Egypt",
+    `Country Name` == "Micronesia, Fed. Sts." ~ "Micronesia",
+    `Country Name` == "Hong Kong SAR, China" ~ "Hong Kong",
+    `Country Name` == "Iran, Islamic Rep." ~ "Iran",
+    `Country Name` == "Kyrgyz Republic" ~ "Kyrgyzstan",
+    `Country Name` == "St. Kitts and Nevis" ~ "St Kitts & Nevis",
+    `Country Name` == "Korea, Rep." ~ "Korea, South",
+    `Country Name` == "Lao PDR" ~ "Lao People's Dem Rep",
+    `Country Name` == "St. Lucia" ~ "Saint Lucia",
+    `Country Name` == "Macao SAR, China" ~ "Macau",
+    `Country Name` == "North Macedonia" ~ "Macedonia (Former Yug. Rep)",
+    `Country Name` == "Myanmar" ~ "Myanmar (Burma)",
+    `Country Name` == "Korea, Dem. People's Rep." ~ "Korea, North",
+    `Country Name` == "Eswatini" ~ "Swaziland",
+    `Country Name` == "Syrian Arab Republic" ~ "Syria",
+    `Country Name` == "Timor-Leste" ~ "East Timor",
+    `Country Name` == "Turkiye" ~ "Turkey",
+    `Country Name` == "St. Vincent and the Grenadines" ~ "Saint Vincent and Grenadines",
+    `Country Name` == "Venezuela, RB" ~ "Venezuela",
+    `Country Name` == "Viet Nam" ~ "Vietnam",
+    `Country Name` == "Samoa" ~ "Western Samoa",
+    `Country Name` == "Yemen, Rep." ~ "Yemen",
+    TRUE ~ `Country Name`
+  )) |>
+  left_join(frac, by = c("Country Name" = "Country")) |>
+  janitor::clean_names()
+
+columns_to_keep = c(
+  colnames(tryout)[grepl("[0-9]", colnames(tryout))],
+  "country_name", "country_code", "indicator_name_x",
+  "indicator_name_y", "near_coast", "tropical", "language",
+  "ethnic", "religion"
+)
+
+intermed = tryout |>
+  select(all_of(columns_to_keep)) |>
+  rename_with(
+    ~str_replace(., "^x(\\d+)_x$", "fertility_\\1"),
+    matches("^x\\d+_x$")) |>
+  rename_with(
+    ~str_replace(., "^x(\\d+)_y$", "life_expectancy_\\1"),
+    matches("^x\\d+_y$")) |>
+  select(-fertility_69, -life_expectancy_69,
+         -indicator_name_x, -indicator_name_y) |>
+  relocate(country_name, country_code)
