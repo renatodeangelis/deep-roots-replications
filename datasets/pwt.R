@@ -200,6 +200,11 @@ pwt_relig = pwt_final |>
            )))
 
 pwt_instit = pwt_relig |>
+  mutate(country_code = case_when(
+    country_code == "ROU" ~ "ROM",
+    country_code == "COD" ~ "ZAR",
+    TRUE ~ country_code
+  )) |>
   left_join(instit, by = c("country_code" = "country_code"))
 
 pwt_complete = pwt_instit |>
