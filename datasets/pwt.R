@@ -208,4 +208,6 @@ pwt_instit = pwt_relig |>
   left_join(instit, by = c("country_code" = "country_code"))
 
 pwt_complete = pwt_instit |>
-  mutate()
+  mutate(ln_rgdppw = log(rgdpe / emp),
+         trade_to_gdp = pl_x + pl_m,
+         log_income = log(rgdpe))

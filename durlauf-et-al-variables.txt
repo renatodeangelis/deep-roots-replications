@@ -11,7 +11,7 @@ Demography:
 - ~~log of total fertility rate~~
 
 Macroeconomic:
-- ~~within-period ratio of exports plus imports to GDP (filtered for the relaton of this ratio to logs of population and area)~~
+- ~~within-period ratio of exports plus imports to GDP (filtered for the relation of this ratio to logs of population and area)~~
 - inflation rate for period
 - ~~within-period ratio of government consumption to GDP~~
 
