@@ -4,6 +4,7 @@ library(readr)
 library(ggplot2)
 library(stringr)
 library(tidyr)
+library(haven)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
 rugged = read_csv("Datasets/rugged_data.csv")
@@ -61,6 +62,14 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
   ) |>
   ungroup() |>
   select(-`NA`)
+
+colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
+colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
+instit = colony_data |>
+  left_join(colony_names) |>
+  filter(!is.na(avexpr), !is.na(shortnam)) |>
+  select(shortnam, avexpr) |>
+  rename("country_code" = "shortnam")
 
 pwt_inter = pwt_init |>
   filter(!is.na(rgdpe))
@@ -189,3 +198,9 @@ pwt_relig = pwt_final |>
              year > 2008 & year <= 2018 ~ .x[match(2015, year)],
              year > 2018 ~ .x[match(2020, year)]
            )))
+
+pwt_instit = pwt_relig |>
+  left_join(instit, by = c("country_code" = "country_code"))
+
+pwt_complete = pwt_instit |>
+  mutate()
