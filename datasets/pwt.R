@@ -17,11 +17,9 @@ religions_to_remove = c(
   ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
   ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
   "Christians")
-
 other_religions = c(
   "Baha'is", "Ethnic religionists", "Spiritists",
   "Zoroastrians", "New religionists")
-
 eastern_religions = c(
   "Buddhists", "Confucianists", "Chinese folk-religionists",
   "Daoists", "Shintoists", "Sikhs", "Jains")
@@ -63,7 +61,6 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
   ) |>
   ungroup() |>
   select(-`NA`)
-
 
 pwt_inter = pwt_init |>
   filter(!is.na(rgdpe))
