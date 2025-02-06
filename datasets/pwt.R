@@ -210,4 +210,14 @@ pwt_instit = pwt_relig |>
 pwt_complete = pwt_instit |>
   mutate(ln_rgdppw = log(rgdpe / emp),
          trade_to_gdp = pl_x + pl_m,
-         log_income = log(rgdpe))
+         log_income = log(rgdpe),
+         pop = pop * 10^5)
+
+pwt_analysis = pwt_complete |>
+  filter(year > 1974 & year < 1986) |>
+  group_by(country_name) |>
+  mutate(
+    growth = (ln_rgdppw[year == 1985] - ln_rgdppw[year == 1975]) / ln_rgdppw[year == 1975],
+    pop_growth = log(pop[year == 1985] - pop[year == 1975]) + 0.05) |>
+  ungroup() |>
+  filter(!is.na(growth), !is.na(pop_growth))
