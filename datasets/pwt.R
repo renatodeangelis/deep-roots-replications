@@ -74,13 +74,6 @@ instit = colony_data |>
 pwt_inter = pwt_init |>
   filter(!is.na(rgdpe))
 
-avg = function(x, country, column, start_year, end_year) {
-  x |>
-    filter(year >= start_year, year <= end_year, country == country) |>
-    pull(column) |>
-    mean(na.rm = TRUE)
-}
-
 names_to_remove = c(
   "Africa Eastern and Southern", "Africa Western and Central", "Arab World",
   "Central Europe and the Baltics", "Caribbean small states",
@@ -215,6 +208,7 @@ pwt_complete = pwt_instit |>
 
 pwt_analysis = pwt_complete |>
   filter(year > 1975 & year < 2006) |>
+  group_by(country_name) |>
   mutate(
     growth_1 = (ln_rgdppw[year == 1985] - ln_rgdppw[year == 1976]) / ln_rgdppw[year == 1976],
     pop_growth_1 = log(pop[year == 1985] - pop[year == 1976]) + 0.05,
@@ -223,31 +217,37 @@ pwt_analysis = pwt_complete |>
     growth_3 = (ln_rgdppw[year == 2005] - ln_rgdppw[year == 1996]) / ln_rgdppw[year == 1996],
     pop_growth_3 = log(pop[year == 2005] - pop[year == 1996]) + 0.05) |>
   ungroup() |>
-  filter(!is.na(growth_1), !is.na(pop_growth_1),
-         !is.na(growth_2), !is.na(pop_growth_2),
-         !is.na(growth_3), !is.na(pop_growth_3)) |>
+  filter((!is.na(growth_1) & !is.na(pop_growth_1)) |
+         (!is.na(growth_2) & !is.na(pop_growth_2)) |
+         (!is.na(growth_3) & !is.na(pop_growth_3))) |>
   mutate(period = case_when(
     year %in% 1976:1985 ~ "1976-1985",
     year %in% 1986:1995 ~ "1986-1995",
-    year %in% 1996:2005 ~ "1996-2005",
-    TRUE ~ NA_character_
-  )) |>
-  filter(!is.na(period)) |>
+    year %in% 1996:2005 ~ "1996-2005")) |>
+  mutate(
+    growth = ifelse(period == "1976-1985", growth_1,
+                    ifelse(period == "1986-1995", growth_2,
+                           growth_3)),
+    pop_growth = ifelse(period == "1976-1985", pop_growth_1,
+                    ifelse(period == "1986-1995", pop_growth_2,
+                          pop_growth_3)),
+    initial_gdp = ifelse(period == "1976-1985", ln_rgdppw[year == 1976],
+                    ifelse(period == "1986-1995", ln_rgdppw[year == 1986],
+                          ln_rgdppw[year == 1996])),
+    initial_pop = ifelse(period == "1976-1985", pop[year == 1976],
+                    ifelse(period == "1986-1995", pop[year == 1986],
+                          pop[year == 1996])),
+    initial_hc = ifelse(period == "1976-1985", hc[year == 1976],
+                    ifelse(period == "1986-1995", hc[year == 1986],
+                          hc[year == 1996]))) |>
+  select(-growth_1, -pop_growth_1, -growth_2, -pop_growth_2, -growth_3,
+         -pop_growth_3, -starts_with("i_"), -cor_exp, -statcap, -year) |>
   group_by(country_name, period) |>
-  mutate(growth = ifelse(period == "1976-1985", growth_1,
-                      ifelse(period == "1986-1995", growth_2,
-                               growth_3))) |>
-  mutate(pop_growth = ifelse(period == "1976-1985", pop_growth_1,
-                             ifelse(period == "1986-1995", pop_growth_2,
-                                    pop_growth_3))) |>
-  mutate(initial_gdp = ifelse(period == "1976-1985", ln_rgdppw[year == 1976],
-                              ifelse(period == "1986-1995", ln_rgdppw[year == 1986],
-                                     ln_rgdppw[year == 1996]))) |>
-  mutate(initial_pop = ifelse(period == "1976-1985", pop[year == 1976],
-                              ifelse(period == "1986-1995", pop[year == 1986],
-                                     pop[year == 1996]))) |>
-  mutate(initial_hc = ifelse(period == "1976-1985", hc[year == 1976],
-                              ifelse(period == "1986-1995", hc[year == 1986],
-                                     hc[year == 1996])))
-  
-  #summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE), .groups = "drop"))
+  summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop")
+
+pwt_next = pwt_analysis |>
+  filter(!is.na(avexpr), !is.na(growth), !is.na(pop_growth)) |>
+  mutate(across(catholic:other, ~replace_na(., 0)),
+         period_1 = period == "1976-1985",
+         period_2 = period == "1986-1995",
+         period_3 = period == "1996-2005")
