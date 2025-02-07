@@ -30,8 +30,8 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
   select(-"Year") |>
   rename("country" = "...2", "religion" = "...3") |>
   filter(!(religion %in% religions_to_remove)) |>
-  mutate(across(c(`1970`, `2000`, `2015`, `2020`), as.numeric)) |>
-  mutate(across(c(`1970`, `2000`, `2015`, `2020`), ~replace_na(., 0))) |>
+  mutate(across(c(`1900`, `1970`, `2000`, `2020`), as.numeric)) |>
+  mutate(across(c(`1900`, `1970`, `2000`, `2020`), ~replace_na(., 0))) |>
   mutate(religion = case_when(
     religion %in% other_religions ~ "other",
     religion %in% eastern_religions ~ "eastern",
@@ -51,7 +51,7 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
     TRUE ~ religion
   )) |>
   pivot_longer(
-    cols = c(`1970`, `2000`, `2015`, `2020`),
+    cols = c(`1900`, `1970`, `2000`, `2020`),
     names_to = "year",
     values_to = "value"
   ) |>
