@@ -61,8 +61,7 @@ mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "life_expectancy"
-  ) |>
+    values_to = "life_expectancy") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -73,8 +72,7 @@ govt = read_csv("Datasets/govt-consumption-to-gdp.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "govt_consumption"
-  ) |>
+    values_to = "govt_consumption") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -85,8 +83,7 @@ investment = read_csv("Datasets/gross-capital-formation.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "domestic_investment"
-  ) |>
+    values_to = "domestic_investment") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -97,8 +94,7 @@ schooling = read_csv("Datasets/gross-school-enrollment.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "schooling"
-  ) |>
+    values_to = "schooling") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -109,8 +105,7 @@ trade = read_csv("Datasets/trade-to-gdp.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "trade_to_gdp"
-  ) |>
+    values_to = "trade_to_gdp") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -121,8 +116,7 @@ inflation = read_csv("Datasets/inflation.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "inflation"
-  ) |>
+    values_to = "inflation") |>
   janitor::clean_names() |>
   filter(year >= 1976 & year <= 2006,
          !(country_name %in% names_to_remove)) |>
@@ -137,7 +131,8 @@ tryout = fertility |>
   left_join(investment, by = c("country_name", "country_code", "year")) |>
   left_join(schooling, by = c("country_name", "country_code", "year")) |>
   left_join(govt, by = c("country_name", "country_code", "year")) |>
-  left_join(rugged, by = c("country_code" = "isocode", "country_name" = "country")) |>
+  left_join(rugged,
+            by = c("country_code" = "isocode", "country_name" = "country")) |>
   mutate(country_name = case_when(
     country_name == "Bahamas, The" ~ "Bahamas",
     country_name == "Brunei Darussalam" ~ "Brunei",
@@ -162,7 +157,8 @@ tryout = fertility |>
     country_name == "Syrian Arab Republic" ~ "Syria",
     country_name == "Timor-Leste" ~ "East Timor",
     country_name == "Turkiye" ~ "Turkey",
-    country_name == "St. Vincent and the Grenadines" ~ "Saint Vincent and Grenadines",
+    country_name == "St. Vincent and the Grenadines" ~
+      "Saint Vincent and Grenadines",
     country_name == "Venezuela, RB" ~ "Venezuela",
     country_name == "Viet Nam" ~ "Vietnam",
     country_name == "Samoa" ~ "Western Samoa",
@@ -183,17 +179,14 @@ pwt_final = tryout |>
 
 ## Loading in religion data
 
-religions_to_remove = c(
-  ". . Mahayanists", ". . unaffiliated Christians",
+religions_to_remove = c(". . Mahayanists", ". . unaffiliated Christians",
   ". . Vaishnavites", ". . Shaivites", ". . Saktists",
   ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
   ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
   "Christians")
-other_religions = c(
-  "Baha'is", "Ethnic religionists", "Spiritists",
+other_religions = c("Baha'is", "Ethnic religionists", "Spiritists",
   "Zoroastrians", "New religionists")
-eastern_religions = c(
-  "Buddhists", "Confucianists", "Chinese folk-religionists",
+eastern_religions = c("Buddhists", "Confucianists", "Chinese folk-religionists",
   "Daoists", "Shintoists", "Sikhs", "Jains")
 
 religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
@@ -219,24 +212,14 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
     religion == "Jews" ~ "jewish",
     religion == "Hindus" ~ "hindu",
     TRUE ~ religion)) |>
-  pivot_longer(
-    cols = c(`1900`, `1970`, `2000`),
+  pivot_longer(cols = c(`1900`, `1970`, `2000`),
     names_to = "year",
     values_to = "value") |>
   group_by(country, year) |>
-  pivot_wider(
-    names_from = religion,
+  pivot_wider(names_from = religion,
     values_from = value) |>
   ungroup() |>
   select(-`NA`)
-
-colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
-colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
-instit = colony_data |>
-  left_join(colony_names) |>
-  filter(!is.na(avexpr), !is.na(shortnam)) |>
-  select(shortnam, avexpr) |>
-  rename("country_code" = "shortnam")
 
 pwt_relig = pwt_final |>
   left_join(religion |> mutate(year = as.numeric(year)),
@@ -249,6 +232,17 @@ pwt_relig = pwt_final |>
              year > 2008 & year <= 2018 ~ .x[match(2015, year)],
              year > 2018 ~ .x[match(2020, year)]
            )))
+
+## Loading in AJR (2001) dataset
+
+colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
+colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
+instit = colony_data |>
+  left_join(colony_names) |>
+  filter(!is.na(avexpr), !is.na(shortnam)) |>
+  select(shortnam, avexpr) |>
+  rename("country_code" = "shortnam")
+
 
 pwt_instit = pwt_relig |>
   mutate(country_code = case_when(
@@ -265,14 +259,16 @@ pwt_complete = pwt_instit |>
          pop = pop * 10^5)
 
 pwt_analysis = pwt_complete |>
-  filter(year > 1975 & year < 2006) |>
   group_by(country_name) |>
   mutate(
-    growth_1 = (ln_rgdppw[year == 1985] - ln_rgdppw[year == 1976]) / ln_rgdppw[year == 1976],
+    growth_1 = (ln_rgdppw[year == 1985] - ln_rgdppw[year == 1976]) /
+               ln_rgdppw[year == 1976],
     pop_growth_1 = log(pop[year == 1985] - pop[year == 1976]) + 0.05,
-    growth_2 = (ln_rgdppw[year == 1995] - ln_rgdppw[year == 1986]) / ln_rgdppw[year == 1986],
+    growth_2 = (ln_rgdppw[year == 1995] - ln_rgdppw[year == 1986]) /
+               ln_rgdppw[year == 1986],
     pop_growth_2 = log(pop[year == 1995] - pop[year == 1986]) + 0.05,
-    growth_3 = (ln_rgdppw[year == 2005] - ln_rgdppw[year == 1996]) / ln_rgdppw[year == 1996],
+    growth_3 = (ln_rgdppw[year == 2005] - ln_rgdppw[year == 1996]) /
+               ln_rgdppw[year == 1996],
     pop_growth_3 = log(pop[year == 2005] - pop[year == 1996]) + 0.05) |>
   ungroup() |>
   filter((!is.na(growth_1) & !is.na(pop_growth_1)) |
