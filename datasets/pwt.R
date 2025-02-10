@@ -11,6 +11,13 @@ rugged = read_csv("Datasets/rugged_data.csv")
 fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3)
 mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3)
 frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1)
+governance = read_excel("Datasets/wgidataset.xlsx")
+debt = read_excel("Datasets/debt_enforcement_database_jpe.xls")
+govt = read_csv("Datasets/govt-consumption-to-gdp.csv")
+investment = read_csv("Datasets/gross-capital-formation.csv")
+schooling = read_csv("Datasets/gross-school-enrollment.csv")
+trade = read_csv("Datasets/trade-to-gdp.csv")
+inflation = read_csv("Datasets/inflation.csv")
 
 religions_to_remove = c(
   ". . Mahayanists", ". . unaffiliated Christians",
