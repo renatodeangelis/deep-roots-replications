@@ -7,78 +7,17 @@ library(tidyr)
 library(haven)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
-rugged = read_csv("Datasets/rugged_data.csv")
-fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3)
-mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3)
-frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1)
-governance = read_excel("Datasets/wgidataset.xlsx")
-govt = read_csv("Datasets/govt-consumption-to-gdp.csv", skip = 3)
-investment = read_csv("Datasets/gross-capital-formation.csv", skip = 3)
-schooling = read_csv("Datasets/gross-school-enrollment.csv", skip = 3)
-trade = read_csv("Datasets/trade-to-gdp.csv", skip = 3)
-inflation = read_csv("Datasets/inflation.csv", skip = 3)
-
-religions_to_remove = c(
-  ". . Mahayanists", ". . unaffiliated Christians",
-  ". . Vaishnavites", ". . Shaivites", ". . Saktists",
-  ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
-  ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
-  "Christians")
-other_religions = c(
-  "Baha'is", "Ethnic religionists", "Spiritists",
-  "Zoroastrians", "New religionists")
-eastern_religions = c(
-  "Buddhists", "Confucianists", "Chinese folk-religionists",
-  "Daoists", "Shintoists", "Sikhs", "Jains")
-
-religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
-  slice(-1) |>
-  select(-"Year") |>
-  rename("country" = "...2", "religion" = "...3") |>
-  filter(!(religion %in% religions_to_remove)) |>
-  mutate(across(c(`1900`, `1970`, `2000`, `2020`), as.numeric)) |>
-  mutate(across(c(`1900`, `1970`, `2000`, `2020`), ~replace_na(., 0))) |>
-  mutate(religion = case_when(
-    religion %in% other_religions ~ "other",
-    religion %in% eastern_religions ~ "eastern",
-    religion %in% c("Agnostics", "Atheists") ~ "non-religious",
-    TRUE ~ religion
-  )) |>
-  group_by(country, religion) |>
-  summarise(across(everything(), sum), .groups = "drop") |>
-  ungroup() |>
-  mutate(religion = case_when(
-    religion == ". . Catholics" ~ "catholic",
-    religion == ". . Protestants" ~ "protestant",
-    religion == ". . Orthodox" ~ "orthodox",
-    religion == "Muslims" ~ "muslim",
-    religion == "Jews" ~ "jewish",
-    religion == "Hindus" ~ "hindu",
-    TRUE ~ religion
-  )) |>
-  pivot_longer(
-    cols = c(`1900`, `1970`, `2000`, `2020`),
-    names_to = "year",
-    values_to = "value"
-  ) |>
-  group_by(country, year) |>
-  pivot_wider(
-    names_from = religion,
-    values_from = value
-  ) |>
-  ungroup() |>
-  select(-`NA`)
-
-colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
-colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
-instit = colony_data |>
-  left_join(colony_names) |>
-  filter(!is.na(avexpr), !is.na(shortnam)) |>
-  select(shortnam, avexpr) |>
-  rename("country_code" = "shortnam")
-
-pwt_inter = pwt_init |>
-  filter(!is.na(rgdpe))
+rugged = read_csv("Datasets/rugged_data.csv") |>
+  select(isocode, country, near_coast, tropical, colony_esp, colony_prt) |>
+  mutate(colony_esp_prt = colony_esp + colony_prt) |>
+  select(-colony_esp, -colony_prt)
+frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1) |>
+  janitor::clean_names() |>
+  select(country, ethnic, language, religion) |>
+  filter(!is.na(country))
+formalism = read_dta("Datasets/divergence_data.dta") |>
+  filter(check == 1) |>
+  select(country, legal_origin, allstpi1980, allstpi1990, allstpi2000)
 
 names_to_remove = c(
   "Africa Eastern and Southern", "Africa Western and Central", "Arab World",
@@ -105,89 +44,199 @@ names_to_remove = c(
   "Upper middle income", "World", "Channel Islands", "Curacao", "Isle of Man",
   "Not classified", "St. Martin (French part)", "Sint Maarten (Dutch part)")
 
-tryout = fertility |>
-  left_join(mortality, by = c("Country Name", "Country Code")) |>
-  left_join(trade, by = c("Country Name", "Country Code")) |>
-  left_join(inflation, by = c("Country Name", "Country Code")) |>
-  left_join(investment, by = c("Country Name", "Country Code")) |>
-  left_join(schooling, by = c("Country Name", "Country Code")) |>
-  left_join(govt, by = c("Country Name", "Country Code")) |>
-  filter(!(`Country Name` %in% names_to_remove)) |>
-  left_join(rugged, by = c("Country Code" = "isocode")) |>
-  mutate(`Country Name` = case_when(
-    `Country Name` == "Bahamas, The" ~ "Bahamas",
-    `Country Name` == "Brunei Darussalam" ~ "Brunei",
-    `Country Name` == "Congo, Dem. Rep." ~ "Congo, Dem. Rep. (Zaire)",
-    `Country Name` == "Congo, Rep." ~ "Congo",
-    `Country Name` == "Cabo Verde" ~ "Cape Verde",
-    `Country Name` == "Czechia" ~ "Czech Republic",
-    `Country Name` == "Egypt, Arab Rep." ~ "Egypt",
-    `Country Name` == "Micronesia, Fed. Sts." ~ "Micronesia",
-    `Country Name` == "Hong Kong SAR, China" ~ "Hong Kong",
-    `Country Name` == "Iran, Islamic Rep." ~ "Iran",
-    `Country Name` == "Kyrgyz Republic" ~ "Kyrgyzstan",
-    `Country Name` == "St. Kitts and Nevis" ~ "St Kitts & Nevis",
-    `Country Name` == "Korea, Rep." ~ "Korea, South",
-    `Country Name` == "Lao PDR" ~ "Lao People's Dem Rep",
-    `Country Name` == "St. Lucia" ~ "Saint Lucia",
-    `Country Name` == "Macao SAR, China" ~ "Macau",
-    `Country Name` == "North Macedonia" ~ "Macedonia (Former Yug. Rep)",
-    `Country Name` == "Myanmar" ~ "Myanmar (Burma)",
-    `Country Name` == "Korea, Dem. People's Rep." ~ "Korea, North",
-    `Country Name` == "Eswatini" ~ "Swaziland",
-    `Country Name` == "Syrian Arab Republic" ~ "Syria",
-    `Country Name` == "Timor-Leste" ~ "East Timor",
-    `Country Name` == "Turkiye" ~ "Turkey",
-    `Country Name` == "St. Vincent and the Grenadines" ~ "Saint Vincent and Grenadines",
-    `Country Name` == "Venezuela, RB" ~ "Venezuela",
-    `Country Name` == "Viet Nam" ~ "Vietnam",
-    `Country Name` == "Samoa" ~ "Western Samoa",
-    `Country Name` == "Yemen, Rep." ~ "Yemen",
-    TRUE ~ `Country Name`)) |>
-  left_join(frac, by = c("Country Name" = "Country")) |>
-  janitor::clean_names()
-
-columns_to_keep = c("country_name", "country_code",
-  colnames(tryout)[grepl("[0-9]", colnames(tryout))],
-  colnames(tryout)[grepl("indicator_name", colnames(tryout))],
-  "near_coast", "tropical", "language",
-  "ethnic", "religion")
-
-intermed = tryout |>
-  select(all_of(columns_to_keep)) #|>
-  rename_with(
-    ~str_replace(., "^x(\\d+)_x$", "fertility_\\1"),
-    matches("^x\\d+_x$")) |>
-  rename_with(
-    ~str_replace(., "^x(\\d+)_y$", "life_expectancy_\\1"),
-    matches("^x\\d+_y$")) |>
-  select(-fertility_69, -life_expectancy_69,
-         -indicator_name_x, -indicator_name_y) |>
-  relocate(country_name, country_code)
-
-intermed_panel = intermed |>
+fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
   pivot_longer(
-    cols = starts_with("fertility_"),
+    cols = `1960`:`2022`,
     names_to = "year",
-    names_prefix = "fertility_",
     values_to = "fertility"
   ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
   pivot_longer(
-    cols = starts_with("life_expectancy_"),
-    names_to = "year_le",
-    names_prefix = "life_expectancy_",
+    cols = `1960`:`2022`,
+    names_to = "year",
     values_to = "life_expectancy"
   ) |>
-  filter(year == year_le) |>
-  select(-year_le, -rgdppc_2000, -rgdppc_1950_m,
-         -rgdppc_1975_m, -rgdppc_2000_m, -rgdppc_1950_2000_m) |>
-  relocate(country_name, country_code, year)
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
 
-pwt_final = intermed_panel |>
+govt = read_csv("Datasets/govt-consumption-to-gdp.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
+  pivot_longer(
+    cols = `1960`:`2022`,
+    names_to = "year",
+    values_to = "govt_consumption"
+  ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+investment = read_csv("Datasets/gross-capital-formation.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
+  pivot_longer(
+    cols = `1960`:`2022`,
+    names_to = "year",
+    values_to = "domestic_investment"
+  ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+schooling = read_csv("Datasets/gross-school-enrollment.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
+  pivot_longer(
+    cols = `1960`:`2022`,
+    names_to = "year",
+    values_to = "schooling"
+  ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+trade = read_csv("Datasets/trade-to-gdp.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
+  pivot_longer(
+    cols = `1960`:`2022`,
+    names_to = "year",
+    values_to = "trade_to_gdp"
+  ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+inflation = read_csv("Datasets/inflation.csv", skip = 3) |>
+  select(-`...69`, -`2023`) |>
+  pivot_longer(
+    cols = `1960`:`2022`,
+    names_to = "year",
+    values_to = "inflation"
+  ) |>
+  janitor::clean_names() |>
+  filter(year >= 1976 & year <= 2006,
+         !(country_name %in% names_to_remove)) |>
+  select(-indicator_name, -indicator_code)
+
+## Merging together World Bank, geography, fractionalization datasets
+
+tryout = fertility |>
+  left_join(mortality, by = c("country_name", "country_code", "year")) |>
+  left_join(trade, by = c("country_name", "country_code", "year")) |>
+  left_join(inflation, by = c("country_name", "country_code", "year")) |>
+  left_join(investment, by = c("country_name", "country_code", "year")) |>
+  left_join(schooling, by = c("country_name", "country_code", "year")) |>
+  left_join(govt, by = c("country_name", "country_code", "year")) |>
+  left_join(rugged, by = c("country_code" = "isocode", "country_name" = "country")) |>
+  mutate(country_name = case_when(
+    country_name == "Bahamas, The" ~ "Bahamas",
+    country_name == "Brunei Darussalam" ~ "Brunei",
+    country_name == "Congo, Dem. Rep." ~ "Congo, Dem. Rep. (Zaire)",
+    country_name == "Congo, Rep." ~ "Congo",
+    country_name == "Cabo Verde" ~ "Cape Verde",
+    country_name == "Czechia" ~ "Czech Republic",
+    country_name == "Egypt, Arab Rep." ~ "Egypt",
+    country_name == "Micronesia, Fed. Sts." ~ "Micronesia",
+    country_name == "Hong Kong SAR, China" ~ "Hong Kong",
+    country_name == "Iran, Islamic Rep." ~ "Iran",
+    country_name == "Kyrgyz Republic" ~ "Kyrgyzstan",
+    country_name == "St. Kitts and Nevis" ~ "St Kitts & Nevis",
+    country_name == "Korea, Rep." ~ "Korea, South",
+    country_name == "Lao PDR" ~ "Lao People's Dem Rep",
+    country_name == "St. Lucia" ~ "Saint Lucia",
+    country_name == "Macao SAR, China" ~ "Macau",
+    country_name == "North Macedonia" ~ "Macedonia (Former Yug. Rep)",
+    country_name == "Myanmar" ~ "Myanmar (Burma)",
+    country_name == "Korea, Dem. People's Rep." ~ "Korea, North",
+    country_name == "Eswatini" ~ "Swaziland",
+    country_name == "Syrian Arab Republic" ~ "Syria",
+    country_name == "Timor-Leste" ~ "East Timor",
+    country_name == "Turkiye" ~ "Turkey",
+    country_name == "St. Vincent and the Grenadines" ~ "Saint Vincent and Grenadines",
+    country_name == "Venezuela, RB" ~ "Venezuela",
+    country_name == "Viet Nam" ~ "Vietnam",
+    country_name == "Samoa" ~ "Western Samoa",
+    country_name == "Yemen, Rep." ~ "Yemen",
+    TRUE ~ country_name)) |>
+  left_join(frac, by = c("country_name" = "country")) |>
+  janitor::clean_names()
+
+## Merging in PWT data
+
+pwt_final = tryout |>
   mutate(year = as.numeric(year)) |>
-  left_join(pwt_inter, by = c("country_code" = "countrycode",
+  left_join(pwt_init, by = c("country_code" = "countrycode",
                               "year" = "year")) |>
-  relocate(pop_1400, .after = pop)
+  filter(!is.na(rgdpna)) |>
+  select(-country, -starts_with("i_"), -starts_with("pl_"),
+         -statcap, -cor_exp, -starts_with("csh_"), -currency_unit)
+
+## Loading in religion data
+
+religions_to_remove = c(
+  ". . Mahayanists", ". . unaffiliated Christians",
+  ". . Vaishnavites", ". . Shaivites", ". . Saktists",
+  ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
+  ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
+  "Christians")
+other_religions = c(
+  "Baha'is", "Ethnic religionists", "Spiritists",
+  "Zoroastrians", "New religionists")
+eastern_religions = c(
+  "Buddhists", "Confucianists", "Chinese folk-religionists",
+  "Daoists", "Shintoists", "Sikhs", "Jains")
+
+religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
+  slice(-1) |>
+  select(-"Year", -`2020`) |>
+  rename("country" = "...2", "religion" = "...3") |>
+  filter(!(religion %in% religions_to_remove)) |>
+  mutate(across(c(`1900`, `1970`, `2000`), as.numeric)) |>
+  mutate(across(c(`1900`, `1970`, `2000`), ~replace_na(., 0))) |>
+  mutate(religion = case_when(
+    religion %in% other_religions ~ "other",
+    religion %in% eastern_religions ~ "eastern",
+    religion %in% c("Agnostics", "Atheists") ~ "non-religious",
+    TRUE ~ religion)) |>
+  group_by(country, religion) |>
+  summarise(across(everything(), sum), .groups = "drop") |>
+  ungroup() |>
+  mutate(religion = case_when(
+    religion == ". . Catholics" ~ "catholic",
+    religion == ". . Protestants" ~ "protestant",
+    religion == ". . Orthodox" ~ "orthodox",
+    religion == "Muslims" ~ "muslim",
+    religion == "Jews" ~ "jewish",
+    religion == "Hindus" ~ "hindu",
+    TRUE ~ religion)) |>
+  pivot_longer(
+    cols = c(`1900`, `1970`, `2000`),
+    names_to = "year",
+    values_to = "value") |>
+  group_by(country, year) |>
+  pivot_wider(
+    names_from = religion,
+    values_from = value) |>
+  ungroup() |>
+  select(-`NA`)
+
+colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
+colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
+instit = colony_data |>
+  left_join(colony_names) |>
+  filter(!is.na(avexpr), !is.na(shortnam)) |>
+  select(shortnam, avexpr) |>
+  rename("country_code" = "shortnam")
 
 pwt_relig = pwt_final |>
   left_join(religion |> mutate(year = as.numeric(year)),
@@ -235,8 +284,7 @@ pwt_analysis = pwt_complete |>
     year %in% 1996:2005 ~ "1996-2005")) |>
   mutate(
     growth = ifelse(period == "1976-1985", growth_1,
-                    ifelse(period == "1986-1995", growth_2,
-                           growth_3)),
+    ifelse(period == "1986-1995", growth_2, growth_3)),
     pop_growth = ifelse(period == "1976-1985", pop_growth_1,
                     ifelse(period == "1986-1995", pop_growth_2,
                           pop_growth_3)),
@@ -260,7 +308,6 @@ pwt_next = pwt_analysis |>
          period_1 = period == "1976-1985",
          period_2 = period == "1986-1995",
          period_3 = period == "1996-2005")
-
 
 real = pwt_next |>
   left_join(debt, by = c("country_name" = "country")) |>
