@@ -58,7 +58,7 @@ fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3) |>
     values_to = "fertility"
   ) |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2006,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -69,7 +69,7 @@ mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3) |>
     names_to = "year",
     values_to = "life_expectancy") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2005,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -80,7 +80,7 @@ govt = read_csv("Datasets/govt-consumption-to-gdp.csv", skip = 3) |>
     names_to = "year",
     values_to = "govt_consumption") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2005,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -91,7 +91,7 @@ investment = read_csv("Datasets/gross-capital-formation.csv", skip = 3) |>
     names_to = "year",
     values_to = "domestic_investment") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2006,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -102,7 +102,7 @@ schooling = read_csv("Datasets/gross-school-enrollment.csv", skip = 3) |>
     names_to = "year",
     values_to = "schooling") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2005,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -113,7 +113,7 @@ trade = read_csv("Datasets/trade-to-gdp.csv", skip = 3) |>
     names_to = "year",
     values_to = "trade_to_gdp") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2005,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -124,7 +124,7 @@ inflation = read_csv("Datasets/inflation.csv", skip = 3) |>
     names_to = "year",
     values_to = "inflation") |>
   janitor::clean_names() |>
-  filter(year >= 1976 & year <= 2005,
+  filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
@@ -239,7 +239,7 @@ religion_1900 = religion |>
 religion_final = religion |>
   left_join(religion_1900, by = "country") |>
   filter(year %in% c("1970", "2000")) |>
-  mutate(year = ifelse(year == "1970", 1976, 2000))
+  mutate(year = ifelse(year == "1970", 1971, 2000))
 
 pwt_relig = pwt_final |>
   left_join(religion_final |> mutate(year = as.numeric(year)),
@@ -247,7 +247,7 @@ pwt_relig = pwt_final |>
   group_by(country_name) |>
   mutate(across(c(catholic:other),
            ~case_when(
-             year <= 1985 ~ .x[match(1976, year)],
+             year <= 1985 ~ .x[match(1971, year)],
              year > 1985 ~ .x[match(2000, year)])),
          across(c(catholic_1900:other_1900),
            ~first(.)))
@@ -266,18 +266,49 @@ pwt_instit = pwt_relig |>
   mutate(country_code = case_when(
     country_code == "ROU" ~ "ROM",
     country_code == "COD" ~ "ZAR",
-    TRUE ~ country_code
-  )) |>
+    TRUE ~ country_code)) |>
   left_join(instit, by = c("country_code" = "country_code"))
 
-pwt_analytic = pwt_instit |>
+pwt_pre = pwt_instit |>
   filter(!is.na(rgdpna), !is.na(emp), !is.na(pop)) |>
+  group_by(country_name) |>
   mutate(ln_rgdppw = log(rgdpna / emp),
          log_income = log(rgdpna),
          period = case_when(
-           year %in% 1976:1985 ~ "1976-1985",
+           year %in% 1971:1985 ~ "1976-1985",
            year %in% 1986:1995 ~ "1986-1995",
            year %in% 1996:2005 ~ "1996-2005")) |>
+  ungroup()
+
+pwt_instr = pwt_pre |>
+  group_by(country_name) |>
+  mutate(
+    ln_rgdppw_instr = case_when(
+      period == "1976-1985" & any(year == 1971) ~ first(ln_rgdppw[year == 1971]),
+      period == "1986-1995" & any(year == 1981) ~ first(ln_rgdppw[year == 1981]),
+      period == "1996-2005" & any(year == 1991) ~ first(ln_rgdppw[year == 1991]),
+      TRUE ~ NA_real_),
+    school_instr = case_when(
+      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(schooling[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(schooling[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(schooling[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    investment_instr = case_when(
+      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(domestic_investment[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(domestic_investment[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(domestic_investment[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    intial_gdp = case_when(
+      period == "1976-1985" ~ ln_rgdppw[year == 1976],
+      period == "1986-1995" ~ ln_rgdppw[year == 1986],
+      period == "1996-2005" ~ ln_rgdppw[year == 1996]),
+    initial_hc = case_when(
+      period == "1976-1985" ~ hc[year == 1976],
+      period == "1986-1995" ~ hc[year == 1986],
+      period == "1996-2005" ~ hc[year == 1996])
+  )
+
+pwt_analytic = pwt_pre |>
   group_by(country_name, period) |>
   mutate(year_count = n()) |>
   filter(year_count == 10) |>
@@ -285,14 +316,14 @@ pwt_analytic = pwt_instit |>
     growth = (ln_rgdppw[year == max(year)] - ln_rgdppw[year == min(year)]) /
         ln_rgdppw[year == min(year)],
     pop_growth = (pop[year == max(year)] - pop[year == min(year)]) / 
-        pop[year == min(year)] + 0.05) |>
-  ungroup() |>
+        pop[year == min(year)] + 0.05,
+    pop_growth_instr = mean(pop_growth[year %in% min(year)-5:min(year)-1], 
+                           na.rm = TRUE)) |>
   filter(!is.na(growth) & !is.na(pop_growth)) |>
-  group_by(country_name, period) |>
   mutate(
     initial_gdp = ln_rgdppw[year == min(year)],
     initial_pop = pop[year == min(year)],
-    initial_hc = hc[year == min(year)]) |>
+    initial_hc = hc[year == min(year)]) #|>
   select(-year, -year_count) |>
   summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop") |>
   mutate(period_1 = period == "1976-1985",
