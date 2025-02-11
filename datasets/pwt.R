@@ -226,19 +226,31 @@ religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
   pivot_wider(names_from = religion,
     values_from = value) |>
   ungroup() |>
+  mutate(across(catholic:other, ~replace_na(., 0))) |>
   select(-`NA`)
 
+religion_1900 = religion |>
+  filter(year == "1900") |>
+  pivot_wider(
+    names_from = year,
+    values_from = c(catholic, protestant, orthodox, muslim,jewish, hindu, eastern, `non-religious`, other),
+    names_glue = "{.value}_{year}")
+
+religion_final = religion |>
+  left_join(religion_1900, by = "country") |>
+  filter(year %in% c("1970", "2000")) |>
+  mutate(year = ifelse(year == "1970", 1976, 2000))
+
 pwt_relig = pwt_final |>
-  left_join(religion |> mutate(year = as.numeric(year)),
+  left_join(religion_final |> mutate(year = as.numeric(year)),
             by = c("country_name" = "country", "year" = "year")) |>
   group_by(country_name) |>
   mutate(across(c(catholic:other),
            ~case_when(
-             year <= 1985 ~ .x[match(1970, year)],
-             year > 1985 & year <= 2008 ~ .x[match(2000, year)], 
-             year > 2008 & year <= 2018 ~ .x[match(2015, year)],
-             year > 2018 ~ .x[match(2020, year)]
-           )))
+             year <= 1985 ~ .x[match(1976, year)],
+             year > 1985 ~ .x[match(2000, year)])),
+         across(c(catholic_1900:other_1900),
+           ~first(.)))
 
 ## Loading in AJR (2001) dataset
 
@@ -250,7 +262,6 @@ instit = colony_data |>
   select(shortnam, avexpr) |>
   rename("country_code" = "shortnam")
 
-
 pwt_instit = pwt_relig |>
   mutate(country_code = case_when(
     country_code == "ROU" ~ "ROM",
@@ -259,35 +270,29 @@ pwt_instit = pwt_relig |>
   )) |>
   left_join(instit, by = c("country_code" = "country_code"))
 
-pwt_complete = pwt_instit |>
-  mutate(ln_rgdppw = log(rgdpe / emp),
-         trade_to_gdp = pl_x + pl_m,
-         log_income = log(rgdpe),
-         pop = pop * 10^5)
-
-pwt_analysis = pwt_complete |>
-  group_by(country_name) |>
+pwt_analytic = pwt_instit |>
+  mutate(ln_rgdppw = log(rgdpna / emp),
+         log_income = log(rgdpna),
+         pop = pop * 10^5,
+         period = case_when(
+           year %in% 1976:1985 ~ "1976-1985",
+           year %in% 1986:1995 ~ "1986-1995",
+           year %in% 1996:2005 ~ "1996-2005")) |>
+  group_by(country_name, period) |>
   mutate(
-    growth_1 = (ln_rgdppw[year == 1985] - ln_rgdppw[year == 1976]) /
-               ln_rgdppw[year == 1976],
-    pop_growth_1 = log(pop[year == 1985] - pop[year == 1976]) + 0.05,
-    growth_2 = (ln_rgdppw[year == 1995] - ln_rgdppw[year == 1986]) /
-               ln_rgdppw[year == 1986],
-    pop_growth_2 = log(pop[year == 1995] - pop[year == 1986]) + 0.05,
-    growth_3 = (ln_rgdppw[year == 2005] - ln_rgdppw[year == 1996]) /
-               ln_rgdppw[year == 1996],
-    pop_growth_3 = log(pop[year == 2005] - pop[year == 1996]) + 0.05) |>
+    growth_1 = ln_rgdppw[year == 1985] - ln_rgdppw[year == 1976]) / ln_rgdppw[year == 1976],
+    pop_growth_1 = log(pop[year == 1985] - pop[year == 1976] + 0.05),
+    growth_2 = (ln_rgdppw[year == 1995] - ln_rgdppw[year == 1986]) / ln_rgdppw[year == 1986],
+    pop_growth_2 = log(pop[year == 1995] - pop[year == 1986] + 0.05),
+    growth_3 = (ln_rgdppw[year == 2005] - ln_rgdppw[year == 1996]) / ln_rgdppw[year == 1996],
+    pop_growth_3 = log(pop[year == 2005] - pop[year == 1996] + 0.05)) |>
   ungroup() |>
   filter((!is.na(growth_1) & !is.na(pop_growth_1)) |
          (!is.na(growth_2) & !is.na(pop_growth_2)) |
          (!is.na(growth_3) & !is.na(pop_growth_3))) |>
-  mutate(period = case_when(
-    year %in% 1976:1985 ~ "1976-1985",
-    year %in% 1986:1995 ~ "1986-1995",
-    year %in% 1996:2005 ~ "1996-2005")) |>
   mutate(
     growth = ifelse(period == "1976-1985", growth_1,
-    ifelse(period == "1986-1995", growth_2, growth_3)),
+                ifelse(period == "1986-1995", growth_2, growth_3)),
     pop_growth = ifelse(period == "1976-1985", pop_growth_1,
                     ifelse(period == "1986-1995", pop_growth_2,
                           pop_growth_3)),
@@ -301,17 +306,9 @@ pwt_analysis = pwt_complete |>
                     ifelse(period == "1986-1995", hc[year == 1986],
                           hc[year == 1996]))) |>
   select(-growth_1, -pop_growth_1, -growth_2, -pop_growth_2, -growth_3,
-         -pop_growth_3, -starts_with("i_"), -cor_exp, -statcap, -year) |>
+         -pop_growth_3, -year) |>
   group_by(country_name, period) |>
-  summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop")
-
-pwt_next = pwt_analysis |>
-  filter(!is.na(avexpr), !is.na(growth), !is.na(pop_growth)) |>
-  mutate(across(catholic:other, ~replace_na(., 0)),
-         period_1 = period == "1976-1985",
+  summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop") |>
+  mutate(period_1 = period == "1976-1985",
          period_2 = period == "1986-1995",
          period_3 = period == "1996-2005")
-
-real = pwt_next |>
-  left_join(debt, by = c("country_name" = "country")) |>
-  mutate(debt_to_gdp = bkorigin / rgdpe)
