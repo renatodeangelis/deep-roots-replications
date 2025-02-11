@@ -17,7 +17,13 @@ frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1) |>
   filter(!is.na(country))
 formalism = read_dta("Datasets/divergence_data.dta") |>
   filter(check == 1) |>
-  select(country, legal_origin, allstpi1980, allstpi1990, allstpi2000)
+  select(country, legal_origin, allstpi1980, allstpi1990, allstpi2000) |>
+  mutate(country = case_when(
+    country == "Senegal (1965)" ~ "Senegal",
+    country == "Tunisia (1960)" ~ "Tunisia",
+    country == "USA" ~ "United States",
+    TRUE ~ country
+  ))
 
 names_to_remove = c(
   "Africa Eastern and Southern", "Africa Western and Central", "Arab World",
@@ -165,6 +171,7 @@ tryout = fertility |>
     country_name == "Yemen, Rep." ~ "Yemen",
     TRUE ~ country_name)) |>
   left_join(frac, by = c("country_name" = "country")) |>
+  left_join(formalism, by = c("country_name" = "country")) |>
   janitor::clean_names()
 
 ## Merging in PWT data
