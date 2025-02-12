@@ -22,8 +22,7 @@ formalism = read_dta("Datasets/divergence_data.dta") |>
     country == "Senegal (1965)" ~ "Senegal",
     country == "Tunisia (1960)" ~ "Tunisia",
     country == "USA" ~ "United States",
-    TRUE ~ country
-  ))
+    TRUE ~ country))
 
 names_to_remove = c(
   "Africa Eastern and Southern", "Africa Western and Central", "Arab World",
