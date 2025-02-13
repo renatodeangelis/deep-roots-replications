@@ -282,6 +282,22 @@ pwt_pre = pwt_instit |>
 pwt_instr = pwt_pre |>
   group_by(country_name) |>
   mutate(
+    pop_growth = case_when(
+      period == "1976-1985" & all(year %in% 1976:1985) ~ 
+        (first(pop[year == 1985]) - first(pop[year == 1976])) / first(pop[year == 1976]),
+      period == "1986-1995" & all(year %in% 1986:1995) ~ 
+        (first(pop[year == 1995]) - first(pop[year == 1986])) / first(pop[year == 1986]),
+      period == "1996-2005" & all(year %in% 1996:2005) ~ 
+        (first(pop[year == 2005]) - first(pop[year == 1996])) / first(pop[year == 1996]),
+      TRUE ~ NA_real_),
+    pop_growth_instr = case_when(
+      period == "1976-1985" & all(year %in% 1971:1975) ~ 
+        (first(pop[year == 1975]) - first(pop[year == 1971])) / first(pop[year == 1971]),
+      period == "1986-1995" & all(year %in% 1981:1985) ~ 
+        (first(pop[year == 1985]) - first(pop[year == 1981])) / first(pop[year == 1981]),
+      period == "1996-2005" & all(year %in% 1991:1995) ~ 
+        (first(pop[year == 1995]) - first(pop[year == 1991])) / first(pop[year == 1991]),
+      TRUE ~ NA_real_),
     ln_rgdppw_instr = case_when(
       period == "1976-1985" & any(year == 1971) ~ first(ln_rgdppw[year == 1971]),
       period == "1986-1995" & any(year == 1981) ~ first(ln_rgdppw[year == 1981]),
@@ -297,32 +313,43 @@ pwt_instr = pwt_pre |>
       period == "1986-1995" & all(year %in% 1981:1985) ~ mean(domestic_investment[year %in% 1981:1985], na.rm = TRUE),
       period == "1996-2005" & all(year %in% 1991:1995) ~ mean(domestic_investment[year %in% 1991:1995], na.rm = TRUE),
       TRUE ~ NA_real_),
-    intial_gdp = case_when(
-      period == "1976-1985" ~ ln_rgdppw[year == 1976],
-      period == "1986-1995" ~ ln_rgdppw[year == 1986],
-      period == "1996-2005" ~ ln_rgdppw[year == 1996]),
+    trade_instr = case_when(
+      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(trade_to_gdp[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(trade_to_gdp[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(trade_to_gdp[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    govt_instr = case_when(
+      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(govt_consumption[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(govt_consumption[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(govt_consumption[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    initial_gdp = case_when(
+      period == "1976-1985" & any(year == 1976) ~ first(ln_rgdppw[year == 1976]),
+      period == "1986-1995" & any(year == 1986) ~ first(ln_rgdppw[year == 1986]),
+      period == "1996-2005" & any(year == 1996) ~ first(ln_rgdppw[year == 1996]),
+      TRUE ~ NA_real_),
     initial_hc = case_when(
-      period == "1976-1985" ~ hc[year == 1976],
-      period == "1986-1995" ~ hc[year == 1986],
-      period == "1996-2005" ~ hc[year == 1996])
+      period == "1976-1985" & any(year == 1976) ~ first(hc[year == 1976]),
+      period == "1986-1995" & any(year == 1986) ~ first(hc[year == 1986]),
+      period == "1996-2005" & any(year == 1996) ~ first(hc[year == 1996]),
+      TRUE ~ NA_real_)
   )
 
-pwt_analytic = pwt_pre |>
+pwt_analytic = pwt_instr |>
   group_by(country_name, period) |>
   mutate(year_count = n()) |>
   filter(year_count == 10) |>
   mutate(
+    cum_inflation = case_when(
+      period == "1976-1985" ~ prod(1 + inflation[year %in% 1976:1985] / 100, na.rm = TRUE) - 1,
+      period == "1986-1995" ~ prod(1 + inflation[year %in% 1986:1995] / 100, na.rm = TRUE) - 1,
+      period == "1996-2005" ~ prod(1 + inflation[year %in% 1996:2005] / 100, na.rm = TRUE) - 1,
+      TRUE ~ NA_real_),
     growth = (ln_rgdppw[year == max(year)] - ln_rgdppw[year == min(year)]) /
-        ln_rgdppw[year == min(year)],
+        ln_rgdppw[year == min(year)],3
     pop_growth = (pop[year == max(year)] - pop[year == min(year)]) / 
-        pop[year == min(year)] + 0.05,
-    pop_growth_instr = mean(pop_growth[year %in% min(year)-5:min(year)-1], 
-                           na.rm = TRUE)) |>
+        pop[year == min(year)]) |>
   filter(!is.na(growth) & !is.na(pop_growth)) |>
-  mutate(
-    initial_gdp = ln_rgdppw[year == min(year)],
-    initial_pop = pop[year == min(year)],
-    initial_hc = hc[year == min(year)]) #|>
   select(-year, -year_count) |>
   summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop") |>
   mutate(period_1 = period == "1976-1985",
