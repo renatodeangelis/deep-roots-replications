@@ -282,46 +282,10 @@ pwt_pre = pwt_instit |>
 pwt_instr = pwt_pre |>
   group_by(country_name) |>
   mutate(
-    pop_growth = case_when(
-      period == "1976-1985" & all(year %in% 1976:1985) ~ 
-        (first(pop[year == 1985]) - first(pop[year == 1976])) / first(pop[year == 1976]),
-      period == "1986-1995" & all(year %in% 1986:1995) ~ 
-        (first(pop[year == 1995]) - first(pop[year == 1986])) / first(pop[year == 1986]),
-      period == "1996-2005" & all(year %in% 1996:2005) ~ 
-        (first(pop[year == 2005]) - first(pop[year == 1996])) / first(pop[year == 1996]),
-      TRUE ~ NA_real_),
-    pop_growth_instr = case_when(
-      period == "1976-1985" & all(year %in% 1971:1975) ~ 
-        (first(pop[year == 1975]) - first(pop[year == 1971])) / first(pop[year == 1971]),
-      period == "1986-1995" & all(year %in% 1981:1985) ~ 
-        (first(pop[year == 1985]) - first(pop[year == 1981])) / first(pop[year == 1981]),
-      period == "1996-2005" & all(year %in% 1991:1995) ~ 
-        (first(pop[year == 1995]) - first(pop[year == 1991])) / first(pop[year == 1991]),
-      TRUE ~ NA_real_),
     ln_rgdppw_instr = case_when(
       period == "1976-1985" & any(year == 1971) ~ first(ln_rgdppw[year == 1971]),
       period == "1986-1995" & any(year == 1981) ~ first(ln_rgdppw[year == 1981]),
       period == "1996-2005" & any(year == 1991) ~ first(ln_rgdppw[year == 1991]),
-      TRUE ~ NA_real_),
-    school_instr = case_when(
-      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(schooling[year %in% 1971:1975], na.rm = TRUE),
-      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(schooling[year %in% 1981:1985], na.rm = TRUE),
-      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(schooling[year %in% 1991:1995], na.rm = TRUE),
-      TRUE ~ NA_real_),
-    investment_instr = case_when(
-      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(domestic_investment[year %in% 1971:1975], na.rm = TRUE),
-      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(domestic_investment[year %in% 1981:1985], na.rm = TRUE),
-      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(domestic_investment[year %in% 1991:1995], na.rm = TRUE),
-      TRUE ~ NA_real_),
-    trade_instr = case_when(
-      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(trade_to_gdp[year %in% 1971:1975], na.rm = TRUE),
-      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(trade_to_gdp[year %in% 1981:1985], na.rm = TRUE),
-      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(trade_to_gdp[year %in% 1991:1995], na.rm = TRUE),
-      TRUE ~ NA_real_),
-    govt_instr = case_when(
-      period == "1976-1985" & all(year %in% 1971:1975) ~ mean(govt_consumption[year %in% 1971:1975], na.rm = TRUE),
-      period == "1986-1995" & all(year %in% 1981:1985) ~ mean(govt_consumption[year %in% 1981:1985], na.rm = TRUE),
-      period == "1996-2005" & all(year %in% 1991:1995) ~ mean(govt_consumption[year %in% 1991:1995], na.rm = TRUE),
       TRUE ~ NA_real_),
     initial_gdp = case_when(
       period == "1976-1985" & any(year == 1976) ~ first(ln_rgdppw[year == 1976]),
@@ -335,8 +299,45 @@ pwt_instr = pwt_pre |>
       TRUE ~ NA_real_)
   )
 
-pwt_analytic = pwt_instr |>
-  group_by(country_name, period) |>
+pwt_instr2 = pwt_instr |>
+  group_by(country_name) |>
+  summarise(
+    year = year,
+    pop_growth = case_when(
+      period == "1976-1985" ~ (first(pop[year == 1985]) - first(pop[year == 1976])) / first(pop[year == 1976]),
+      period == "1986-1995" ~ (first(pop[year == 1995]) - first(pop[year == 1986])) / first(pop[year == 1986]),
+      period == "1996-2005" ~ (first(pop[year == 2005]) - first(pop[year == 1996])) / first(pop[year == 1996]),
+      TRUE ~ NA_real_),
+    pop_growth_instr = case_when(
+      period == "1976-1985" ~ (first(pop[year == 1975]) - first(pop[year == 1971])) / first(pop[year == 1971]),
+      period == "1986-1995" ~ (first(pop[year == 1985]) - first(pop[year == 1981])) / first(pop[year == 1981]),
+      period == "1996-2005" ~ (first(pop[year == 1995]) - first(pop[year == 1991])) / first(pop[year == 1991]),
+      TRUE ~ NA_real_),
+    school_instr = case_when(
+      period == "1976-1985" ~ mean(schooling[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" ~ mean(schooling[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" ~ mean(schooling[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    investment_instr = case_when(
+      period == "1976-1985" ~ mean(domestic_investment[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" ~ mean(domestic_investment[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" ~ mean(domestic_investment[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    trade_instr = case_when(
+      period == "1976-1985" ~ mean(trade_to_gdp[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" ~ mean(trade_to_gdp[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" ~ mean(trade_to_gdp[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_),
+    govt_instr = case_when(
+      period == "1976-1985" ~ mean(govt_consumption[year %in% 1971:1975], na.rm = TRUE),
+      period == "1986-1995" ~ mean(govt_consumption[year %in% 1981:1985], na.rm = TRUE),
+      period == "1996-2005" ~ mean(govt_consumption[year %in% 1991:1995], na.rm = TRUE),
+      TRUE ~ NA_real_)
+  ) |>
+  left_join(pwt_instr, by = c("country_name", "year"))
+
+pwt_analytic = pwt_instr2 |>
+  group_by(country_name, country_code, period) |>
   mutate(year_count = n()) |>
   filter(year_count == 10) |>
   mutate(
@@ -346,12 +347,16 @@ pwt_analytic = pwt_instr |>
       period == "1996-2005" ~ prod(1 + inflation[year %in% 1996:2005] / 100, na.rm = TRUE) - 1,
       TRUE ~ NA_real_),
     growth = (ln_rgdppw[year == max(year)] - ln_rgdppw[year == min(year)]) /
-        ln_rgdppw[year == min(year)],3
-    pop_growth = (pop[year == max(year)] - pop[year == min(year)]) / 
-        pop[year == min(year)]) |>
+        ln_rgdppw[year == min(year)],
+    ethnic = na_if(ethnic, "."),
+    ethnic = as.numeric(ethnic),
+    language = na_if(language, "."),
+    language = as.numeric(language),
+    religion = na_if(religion, "."),
+    religion = as.numeric(religion)) |>
   filter(!is.na(growth) & !is.na(pop_growth)) |>
   select(-year, -year_count) |>
-  summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop") |>
+  summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)), .groups = "drop") |>
   mutate(period_1 = period == "1976-1985",
          period_2 = period == "1986-1995",
          period_3 = period == "1996-2005")
