@@ -54,8 +54,7 @@ fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3) |>
   pivot_longer(
     cols = `1960`:`2022`,
     names_to = "year",
-    values_to = "fertility"
-  ) |>
+    values_to = "fertility") |>
   janitor::clean_names() |>
   filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
@@ -338,6 +337,7 @@ pwt_instr2 = pwt_instr |>
 
 pwt_analytic = pwt_instr2 |>
   group_by(country_name, country_code, period) |>
+  filter(!(year %in% 1971:1975)) |>
   mutate(year_count = n()) |>
   filter(year_count == 10) |>
   mutate(
@@ -347,7 +347,12 @@ pwt_analytic = pwt_instr2 |>
       period == "1996-2005" ~ prod(1 + inflation[year %in% 1996:2005] / 100, na.rm = TRUE) - 1,
       TRUE ~ NA_real_),
     growth = (ln_rgdppw[year == max(year)] - ln_rgdppw[year == min(year)]) /
-        ln_rgdppw[year == min(year)],
+      ln_rgdppw[year == min(year)],
+    hc_growth = (hc[year == max(year)] - hc[year == min(year)]) /
+      hc[year == min(year)],
+    phys_capital = rnna / emp,
+    pc_growth = (phys_capital[year == max(year)] - phys_capital[year == min(year)]) /
+      phys_capital[year == min(year)],
     ethnic = na_if(ethnic, "."),
     ethnic = as.numeric(ethnic),
     language = na_if(language, "."),
