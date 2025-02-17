@@ -291,10 +291,20 @@ pwt_instr = pwt_pre |>
       period == "1986-1995" & any(year == 1986) ~ first(ln_rgdppw[year == 1986]),
       period == "1996-2005" & any(year == 1996) ~ first(ln_rgdppw[year == 1996]),
       TRUE ~ NA_real_),
+    initial_gdp_instr = case_when(
+      period == "1976-1985" & any(year == 1971) ~ first(ln_rgdppw[year == 1971]),
+      period == "1986-1995" & any(year == 1981) ~ first(ln_rgdppw[year == 1981]),
+      period == "1996-2005" & any(year == 1991) ~ first(ln_rgdppw[year == 1991]),
+      TRUE ~ NA_real_),
     initial_hc = case_when(
       period == "1976-1985" & any(year == 1976) ~ first(hc[year == 1976]),
       period == "1986-1995" & any(year == 1986) ~ first(hc[year == 1986]),
       period == "1996-2005" & any(year == 1996) ~ first(hc[year == 1996]),
+      TRUE ~ NA_real_),
+    initial_hc_instr = case_when(
+      period == "1976-1985" & any(year == 1971) ~ first(hc[year == 1971]),
+      period == "1986-1995" & any(year == 1981) ~ first(hc[year == 1981]),
+      period == "1996-2005" & any(year == 1991) ~ first(hc[year == 1991]),
       TRUE ~ NA_real_)
   )
 
