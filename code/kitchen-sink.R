@@ -12,10 +12,11 @@ pwt_merge = pwt |>
 east_asia = c("CHN", "HKG", "JPN", "KOR", "MAC", "MNG")
 
 pwt_final = pwt_merge |>
+  filter(investment_instr != 0) |>
   mutate(initial_gdp = log(initial_gdp),
          initial_gdp_instr = log(initial_gdp_instr),
-         schooling = log(schooling),
-         school_instr = log(school_instr),
+#         schooling = log(schooling),
+#         school_instr = log(school_instr),
          domestic_investment = log(domestic_investment),
          investment_instr = log(investment_instr),
          mortality = 1/life_expectancy,
@@ -24,14 +25,17 @@ pwt_final = pwt_merge |>
          east_asia = country_code %in% east_asia,
          latam = wb_region == "Latin America and Caribbean",
          formalism = ifelse(period_1 == TRUE, allstpi1980,
-                            ifelse(period_2 == TRUE, allstpi1990, allstpi2000)))
+                            ifelse(period_2 == TRUE, allstpi1990, allstpi2000)),
+         period_1 = ifelse(period_1 == TRUE, 1, 0),
+         period_2 = ifelse(period_2 == TRUE, 1, 0),
+         period_3 = ifelse(period_3 == TRUE, 1, 0))
 
 ## Model 1: Kitchen sink regression
 
 # First stage
 iv_initial_gdp = lm(initial_gdp ~ initial_gdp_instr, data = pwt_final)
 iv_hc = lm(initial_hc ~ initial_hc_instr, data = pwt_final)
-iv_schooling = lm(schooling ~ school_instr, data = pwt_final)
+#iv_schooling = lm(schooling ~ school_instr, data = pwt_final)
 iv_investment = lm(domestic_investment ~ investment_instr, data = pwt_final)
 iv_pop = lm(pop_growth ~ pop_growth_instr, data = pwt_final)
 iv_trade = lm(trade_to_gdp ~ trade_instr, data = pwt_final)
@@ -50,7 +54,7 @@ iv_formalism = lm(formalism ~ legal_origin, data = pwt_final)
 
 pwt_final$pred_initial_gdp <- predict(iv_initial_gdp, pwt_final)
 pwt_final$pred_hc <- predict(iv_hc, pwt_final)
-pwt_final$pred_schooling <- predict(iv_schooling, pwt_final)
+#pwt_final$pred_schooling <- predict(iv_schooling, pwt_final)
 pwt_final$pred_investment <- predict(iv_investment, pwt_final)
 pwt_final$pred_pop <- predict(iv_pop, pwt_final)
 pwt_final$pred_trade <- predict(iv_trade, pwt_final)
@@ -67,12 +71,13 @@ pwt_final$pred_other <- predict(iv_other, pwt_final)
 pwt_final$pred_nonreligious <- predict(iv_nonreligious, pwt_final)
 pwt_final$pred_formalism <- predict(iv_formalism, pwt_final)
 
-kitchen_sink = lm(growth ~ pred_initial_gdp + pred_pop + pred_schooling +
-                    pred_investment + pred_trade +
+kitchen_sink = lm(growth ~ pred_initial_gdp + pred_pop + fertility + mortality +
+                    pred_investment + pred_trade + pred_inflation +
                     pred_govt + east_asia + ssa + latam +
                     pred_eastern + pred_jewish + pred_muslim + pred_orthodox +
                     pred_protestant + pred_nonreligious + pred_other +
-                    near_coast + tropical + language + ethnic + avexpr,
+                    near_coast + tropical + language + ethnic + avexpr +
+                    period_1 + period_2,
                   data = pwt_final)
 
 
