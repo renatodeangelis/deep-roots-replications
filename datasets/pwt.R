@@ -7,14 +7,17 @@ library(tidyr)
 library(haven)
 
 pwt_init = read_excel("Datasets/pwt1001.xlsx")
+
 rugged = read_csv("Datasets/rugged_data.csv") |>
   select(isocode, country, near_coast, tropical, colony_esp, colony_prt) |>
   mutate(colony_esp_prt = colony_esp + colony_prt) |>
   select(-colony_esp, -colony_prt)
+
 frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1) |>
   janitor::clean_names() |>
   select(country, ethnic, language, religion) |>
   filter(!is.na(country))
+
 formalism = read_dta("Datasets/divergence_data.dta") |>
   filter(check == 1) |>
   select(country, legal_origin, allstpi1980, allstpi1990, allstpi2000) |>
@@ -23,6 +26,9 @@ formalism = read_dta("Datasets/divergence_data.dta") |>
     country == "Tunisia (1960)" ~ "Tunisia",
     country == "USA" ~ "United States",
     TRUE ~ country))
+
+schooling = read_csv("datasets/BL2013_MF2599_v2.2.csv") |>
+  select(WBcode, year, yr_sch)
 
 names_to_remove = c(
   "Africa Eastern and Southern", "Africa Western and Central", "Arab World",
@@ -88,17 +94,6 @@ investment = read_csv("Datasets/gross-capital-formation.csv", skip = 3) |>
     cols = `1960`:`2022`,
     names_to = "year",
     values_to = "domestic_investment") |>
-  janitor::clean_names() |>
-  filter(year >= 1971 & year <= 2005,
-         !(country_name %in% names_to_remove)) |>
-  select(-indicator_name, -indicator_code)
-
-schooling = read_csv("Datasets/gross-school-enrollment.csv", skip = 3) |>
-  select(-`...69`, -`2023`) |>
-  pivot_longer(
-    cols = `1960`:`2022`,
-    names_to = "year",
-    values_to = "schooling") |>
   janitor::clean_names() |>
   filter(year >= 1971 & year <= 2005,
          !(country_name %in% names_to_remove)) |>
