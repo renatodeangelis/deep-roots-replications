@@ -68,8 +68,8 @@ pwt_final$pred_nonreligious <- predict(iv_nonreligious, pwt_final)
 pwt_final$pred_formalism <- predict(iv_formalism, pwt_final)
 
 kitchen_sink = lm(growth ~ pred_initial_gdp + pred_pop + pred_schooling +
-                    pred_investment + mortality + fertility + pred_trade +
-                    pred_govt + pred_inflation + east_asia + ssa + latam +
+                    pred_investment + pred_trade +
+                    pred_govt + east_asia + ssa + latam +
                     pred_eastern + pred_jewish + pred_muslim + pred_orthodox +
                     pred_protestant + pred_nonreligious + pred_other +
                     near_coast + tropical + language + ethnic + avexpr,

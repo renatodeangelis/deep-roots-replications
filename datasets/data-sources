@@ -1,0 +1,27 @@
+Data Sources
+
+Penn World Table
+
+World Bank
+- fertility
+- life expectancy
+- government consumption (General government final consumption expenditure (% of GDP)
+- domestic investment (Gross capital formation (% of GDP))
+- trade to GDP ratio (Trade (% of GDP))
+- inflation rate (Inflation, consumer prices (annual %)
+
+Barro-Lee
+- average years of schooling, 25+
+
+Nunn-Pugo
+- distance to ice-free coast
+- % tropical
+
+AJR (2001)
+- average risk of expropriation
+
+World Religion Database
+- religion shares, 1900, 1970, 2000
+
+Alesina et al
+- fractionalization

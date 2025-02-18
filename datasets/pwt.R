@@ -128,8 +128,8 @@ tryout = fertility |>
   left_join(trade, by = c("country_name", "country_code", "year")) |>
   left_join(inflation, by = c("country_name", "country_code", "year")) |>
   left_join(investment, by = c("country_name", "country_code", "year")) |>
-  left_join(schooling, by = c("country_name", "country_code", "year")) |>
   left_join(govt, by = c("country_name", "country_code", "year")) |>
+  left_join(schooling, by = c("country_code" = "WBcode", "year")) |>
   left_join(rugged,
             by = c("country_code" = "isocode", "country_name" = "country")) |>
   mutate(country_name = case_when(
