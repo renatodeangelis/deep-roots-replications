@@ -275,7 +275,8 @@ pwt_pre = pwt_instit |>
          period = case_when(
            year %in% 1971:1985 ~ "1976-1985",
            year %in% 1986:1995 ~ "1986-1995",
-           year %in% 1996:2005 ~ "1996-2005")) |>
+           year %in% 1996:2005 ~ "1996-2005"),
+         across(everything(), ~ ifelse(. == -Inf, NA, .))) |>
   ungroup()
 
 pwt_instr = pwt_pre |>

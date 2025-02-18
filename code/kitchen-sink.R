@@ -13,6 +13,7 @@ east_asia = c("CHN", "HKG", "JPN", "KOR", "MAC", "MNG")
 
 pwt_final = pwt_merge |>
   mutate(initial_gdp = log(initial_gdp),
+         initial_gdp_instr = log(initial_gdp_instr),
          schooling = log(schooling),
          school_instr = log(school_instr),
          domestic_investment = log(domestic_investment),
@@ -47,6 +48,32 @@ iv_other = lm(other ~ other_1900, data = pwt_final)
 iv_nonreligious = lm(`non-religious` ~ `non-religious_1900`, data = pwt_final)
 iv_formalism = lm(formalism ~ legal_origin, data = pwt_final)
 
+pwt_final$pred_initial_gdp <- predict(iv_initial_gdp, pwt_final)
+pwt_final$pred_hc <- predict(iv_hc, pwt_final)
+pwt_final$pred_schooling <- predict(iv_schooling, pwt_final)
+pwt_final$pred_investment <- predict(iv_investment, pwt_final)
+pwt_final$pred_pop <- predict(iv_pop, pwt_final)
+pwt_final$pred_trade <- predict(iv_trade, pwt_final)
+pwt_final$pred_govt <- predict(iv_govt, pwt_final)
+pwt_final$pred_inflation <- predict(iv_inflation, pwt_final)
+pwt_final$pred_catholic <- predict(iv_catholic, pwt_final)
+pwt_final$pred_orthodox <- predict(iv_orthodox, pwt_final)
+pwt_final$pred_protestant <- predict(iv_protestant, pwt_final)
+pwt_final$pred_hindu <- predict(iv_hindu, pwt_final)
+pwt_final$pred_muslim <- predict(iv_muslim, pwt_final)
+pwt_final$pred_jewish <- predict(iv_jewish, pwt_final)
+pwt_final$pred_eastern <- predict(iv_eastern, pwt_final)
+pwt_final$pred_other <- predict(iv_other, pwt_final)
+pwt_final$pred_nonreligious <- predict(iv_nonreligious, pwt_final)
+pwt_final$pred_formalism <- predict(iv_formalism, pwt_final)
+
+kitchen_sink = lm(growth ~ pred_initial_gdp + pred_pop + pred_schooling +
+                    pred_investment + mortality + fertility + pred_trade +
+                    pred_govt + pred_inflation + east_asia + ssa + latam +
+                    pred_eastern + pred_jewish + pred_muslim + pred_orthodox +
+                    pred_protestant + pred_nonreligious + pred_other +
+                    near_coast + tropical + language + ethnic + avexpr,
+                  data = pwt_final)
 
 
 
