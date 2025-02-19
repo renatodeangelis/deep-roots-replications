@@ -257,12 +257,8 @@ pwt_mid = pwt_inter |>
          period_1 = ifelse(period == "1975-1984", 1, 0),
          period_2 = ifelse(period == "1985-1994", 1, 0),
          period_3 = ifelse(period == "1995-2004", 1, 0),
-         legal_origin = case_when(
-           legal_origin == 1 ~ "French",
-           legal_origin == 2 ~ "English",
-           legal_origin == 3 ~ "Japanese",
-           legal_origin == 4 ~ "Nordic",
-           TRUE ~ as.character(legal_origin))) |>
+         french_origin = ifelse(legal_origin == 1, 1, 0),
+         british_origin = ifelse(legal_origin == 2, 1, 0)) |>
   select(-starts_with("allstpi")) |>
   group_by(isocode) |>
   complete(year = full_seq(year, 1)) |>
@@ -336,6 +332,11 @@ pwt_instr2 = pwt_instr |>
       period == "1975-1984" ~ mean(kg[year %in% 1970:1975], na.rm = FALSE),
       period == "1985-1994" ~ mean(kg[year %in% 1980:1985], na.rm = FALSE),
       period == "1995-2004" ~ mean(kg[year %in% 1990:1995], na.rm = FALSE),
+      TRUE ~ NA_real_),
+    enrollment_instr = case_when(
+      period == "1975-1984" ~ mean(enrollment[year %in% 1970:1975], na.rm = FALSE),
+      period == "1985-1994" ~ mean(enrollment[year %in% 1980:1985], na.rm = FALSE),
+      period == "1995-2004" ~ mean(enrollment[year %in% 1990:1995], na.rm = FALSE),
       TRUE ~ NA_real_)) |>
   mutate_all(~ifelse(is.nan(.), NA, .)) |>
   left_join(pwt_instr, by = c("isocode", "year"))
@@ -376,7 +377,9 @@ pwt_final = pwt_analytic |>
     fertility = log(fertility),
     french_origin = ifelse(legal_origin == "French", 1, 0),
     british_origin = ifelse(legal_origin == "British", 1, 0))
-  
+
+write_csv(pwt_final, "datasets/pwt_final.csv")
+
   
 
 
