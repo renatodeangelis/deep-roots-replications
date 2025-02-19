@@ -6,7 +6,14 @@ library(stringr)
 library(tidyr)
 library(haven)
 
-pwt_init = read_excel("Datasets/pwt1001.xlsx")
+pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
+  mutate(rgdppw = rgdpe / emp) |>
+  filter(!is.na(rgdppw)) |>
+  group_by(country) |>
+  mutate(gr_rgdppw = (rgdppw - lag(rgdppw)) / lag(rgdppw)) |>
+  select(-starts_with("i_"), -starts_with("pl_"), -statcap, -cor_exp, -avh,
+         -currency_unit, -xr) |>
+  filter(year >= 1960 & year <= 2014)
 
 rugged = read_csv("Datasets/rugged_data.csv") |>
   select(isocode, near_coast, tropical, colony_esp, colony_prt) |>
