@@ -6,46 +6,26 @@ library(stringr)
 library(tidyr)
 library(haven)
 
-schooling = read_csv("datasets/BL2013_MF2599_v2.2.csv") |>
-  select(WBcode, year, yr_sch)
-
 pwt_init = read_excel("datasets/pwt61_data.xlsx", sheet = 2) |>
   janitor::clean_names() |>
-  left_join(schooling, by = c("country_isocode" = "WBcode", "year"))
-  
-  select(isocode, year, pop, rgdpch, rgdpwok, kc, kg, ki, openk) |>
+  select(country_isocode, year, pop, csave, rgdpl, rgdpch, grgdpch, 
+         rgdpwok, openk, kc, kg, ki) |>
+  rename(isocode = country_isocode) |>
   group_by(isocode) |>
-  mutate(gr_rgdpwok = (rgdpwok - lag(rgdpwok)) / lag(rgdpwok),
+  mutate(across(pop:ki, ~na_if(.x, "na")),
+         across(year:ki, as.numeric),
+         gr_rgdpwok = (rgdpwok - lag(rgdpwok)) / lag(rgdpwok),
          period = case_when(
-           year %in% 1970:1984 ~ "1975-1984",
-           year %in% 1985:1994 ~ "1985-1994",
-           year %in% 1995:2004 ~ "1995-2004")) |>
+           year %in% 1960:1974 ~ "1965-1974",
+           year %in% 1975:1984 ~ "1975-1984",
+           year %in% 1985:1994 ~ "1985-1994")) |>
   relocate(period, .after = year) |>
   relocate(gr_rgdpwok, .after = rgdpwok) |>
   filter(!is.na(gr_rgdpwok),
-         year >= 1970 & year <= 2004) |>
+         year >= 1960 & year <= 1994) |>
   ungroup()
 
 wb_regions = read_csv("datasets/world-regions-according-to-the-world-bank.csv")
-
-rugged = read_csv("Datasets/rugged_data.csv") |>
-  select(isocode, near_coast, tropical, colony_esp, colony_prt) |>
-  mutate(colony_esp_prt = colony_esp + colony_prt) |>
-  select(-colony_esp, -colony_prt)
-
-frac = read_excel("Datasets/2003_fractionalization.xls", skip = 1) |>
-  janitor::clean_names() |>
-  select(country, ethnic, language, religion) |>
-  filter(!is.na(country))
-
-formalism = read_dta("Datasets/divergence_data.dta") |>
-  filter(check == 1) |>
-  select(country, legal_origin, allstpi1980, allstpi1990, allstpi2000) |>
-  mutate(country = case_when(
-    country == "Senegal (1965)" ~ "Senegal",
-    country == "Tunisia (1960)" ~ "Tunisia",
-    country == "USA" ~ "United States",
-    TRUE ~ country))
 
 schooling = read_csv("datasets/BL2013_MF2599_v2.2.csv") |>
   select(WBcode, year, yr_sch)
@@ -75,30 +55,6 @@ names_to_remove = c(
   "Upper middle income", "World", "Channel Islands", "Curacao", "Isle of Man",
   "Not classified", "St. Martin (French part)", "Sint Maarten (Dutch part)")
 
-fertility = read_csv("Datasets/world-bank-fertility-rate.csv", skip = 3) |>
-  select(-`...69`, -`2023`) |>
-  pivot_longer(
-    cols = `1960`:`2022`,
-    names_to = "year",
-    values_to = "fertility") |>
-  janitor::clean_names() |>
-  filter(year >= 1970 & year <= 2004,
-         !(country_name %in% names_to_remove)) |>
-  mutate(year = as.numeric(year)) |>
-  select(-indicator_name, -indicator_code)
-
-mortality = read_csv("Datasets/world-bank-life-expectancy.csv", skip = 3) |>
-  select(-`...69`, -`2023`) |>
-  pivot_longer(
-    cols = `1960`:`2022`,
-    names_to = "year",
-    values_to = "life_expectancy") |>
-  janitor::clean_names() |>
-  filter(year >= 1970 & year <= 2005,
-         !(country_name %in% names_to_remove)) |>
-  mutate(year = as.numeric(year)) |>
-  select(-indicator_name, -indicator_code, -country_name)
-
 inflation = read_csv("Datasets/inflation.csv", skip = 3) |>
   select(-`...69`, -`2023`) |>
   pivot_longer(
@@ -123,148 +79,22 @@ enrollment = read_csv("datasets/API_SE.SEC.ENRR_DS2_en_csv_v2_14171.csv", skip =
   mutate(year = as.numeric(year)) |>
   select(-indicator_name, -indicator_code, -country_name)
 
-colony_data = read_dta("datasets/7-ajr-2001/maketable3.dta")
-colony_names = read_dta("datasets/7-ajr-2001/maketable2.dta")
-instit = colony_data |>
-  left_join(colony_names) |>
-  filter(!is.na(avexpr), !is.na(shortnam)) |>
-  select(shortnam, avexpr) |>
-  rename("country_code" = "shortnam")
-
-religions_to_remove = c(". . Mahayanists", ". . unaffiliated Christians",
-                        ". . Vaishnavites", ". . Shaivites", ". . Saktists",
-                        ". . Theravadins", ". . Lamaists", ". . Islamic schismatics",
-                        ". . Independents", ". . Sunnis", ". . Shias", ". . doubly-affiliated",
-                        "Christians")
-other_religions = c("Baha'is", "Ethnic religionists", "Spiritists",
-                    "Zoroastrians", "New religionists")
-eastern_religions = c("Buddhists", "Confucianists", "Chinese folk-religionists",
-                      "Daoists", "Shintoists", "Sikhs", "Jains")
-
-religion = read_excel("Datasets/wrd-religion-by-country.xlsx") |>
-  slice(-1) |>
-  select(-"Year", -`2020`) |>
-  rename("country" = "...2", "religion" = "...3") |>
-  filter(!(religion %in% religions_to_remove)) |>
-  mutate(across(c(`1900`, `1970`, `2000`), as.numeric)) |>
-  mutate(across(c(`1900`, `1970`, `2000`), ~replace_na(., 0))) |>
-  mutate(religion = case_when(
-    religion %in% other_religions ~ "other",
-    religion %in% eastern_religions ~ "eastern",
-    religion %in% c("Agnostics", "Atheists") ~ "non-religious",
-    TRUE ~ religion)) |>
-  group_by(country, religion) |>
-  summarise(across(everything(), sum), .groups = "drop") |>
-  ungroup() |>
-  mutate(religion = case_when(
-    religion == ". . Catholics" ~ "catholic",
-    religion == ". . Protestants" ~ "protestant",
-    religion == ". . Orthodox" ~ "orthodox",
-    religion == "Muslims" ~ "muslim",
-    religion == "Jews" ~ "jewish",
-    religion == "Hindus" ~ "hindu",
-    TRUE ~ religion)) |>
-  pivot_longer(cols = c(`1900`, `1970`, `2000`),
-               names_to = "year",
-               values_to = "value") |>
-  group_by(country, year) |>
-  pivot_wider(names_from = religion,
-              values_from = value) |>
-  ungroup() |>
-  mutate(across(catholic:other, ~replace_na(., 0))) |>
-  select(-`NA`)
-
-religion_1900 = religion |>
-  filter(year == "1900") |>
-  pivot_wider(
-    names_from = year,
-    values_from = c(catholic, protestant, orthodox, muslim,jewish, hindu, eastern, `non-religious`, other),
-    names_glue = "{.value}_{year}")
-
-religion_final = religion |>
-  left_join(religion_1900, by = "country") |>
-  filter(year %in% c("1970", "2000")) |>
-  mutate(year = ifelse(year == "1970", 1970, 2000))
-
-east_asia = c("CHN", "HKG", "JPN", "KOR", "MAC", "MNG")
-
 pwt_inter = pwt_init |>
   mutate(isocode = case_when(
     isocode == "ZAR" ~ "COD",
     TRUE ~ isocode)) |>
-  left_join(mortality, by = c("isocode" = "country_code", "year")) |>
-  left_join(fertility, by = c("isocode" = "country_code", "year")) |>
   left_join(inflation, by = c("isocode" = "country_code", "year")) |>
   left_join(enrollment, by = c("isocode" = "country_code", "year")) |>
   left_join(rugged, by = c("isocode")) |>
   left_join(schooling, by = c("isocode" = "WBcode", "year")) |>
   left_join(wb_regions, by = c("isocode" = "Code")) |>
   select(-Entity, -Year) |>
-  rename(wb_region = `World Region according to the World Bank`) |>
-  mutate(isocode = case_when(
-    isocode == "ROU" ~ "ROM",
-    isocode == "COD" ~ "ZAR",
-    TRUE ~ isocode)) |>
-  left_join(instit, by = c("isocode" = "country_code")) |>
-  mutate(country_name = case_when(
-    country_name == "Bahamas, The" ~ "Bahamas",
-    country_name == "Brunei Darussalam" ~ "Brunei",
-    country_name == "Congo, Dem. Rep." ~ "Congo, Dem. Rep. (Zaire)",
-    country_name == "Congo, Rep." ~ "Congo",
-    country_name == "Cabo Verde" ~ "Cape Verde",
-    country_name == "Czechia" ~ "Czech Republic",
-    country_name == "Egypt, Arab Rep." ~ "Egypt",
-    country_name == "Micronesia, Fed. Sts." ~ "Micronesia",
-    country_name == "Hong Kong SAR, China" ~ "Hong Kong",
-    country_name == "Iran, Islamic Rep." ~ "Iran",
-    country_name == "Kyrgyz Republic" ~ "Kyrgyzstan",
-    country_name == "St. Kitts and Nevis" ~ "St Kitts & Nevis",
-    country_name == "Korea, Rep." ~ "Korea, South",
-    country_name == "Lao PDR" ~ "Lao People's Dem Rep",
-    country_name == "St. Lucia" ~ "Saint Lucia",
-    country_name == "Macao SAR, China" ~ "Macau",
-    country_name == "North Macedonia" ~ "Macedonia (Former Yug. Rep)",
-    country_name == "Myanmar" ~ "Myanmar (Burma)",
-    country_name == "Korea, Dem. People's Rep." ~ "Korea, North",
-    country_name == "Eswatini" ~ "Swaziland",
-    country_name == "Syrian Arab Republic" ~ "Syria",
-    country_name == "Timor-Leste" ~ "East Timor",
-    country_name == "Turkiye" ~ "Turkey",
-    country_name == "St. Vincent and the Grenadines" ~
-      "Saint Vincent and Grenadines",
-    country_name == "Venezuela, RB" ~ "Venezuela",
-    country_name == "Viet Nam" ~ "Vietnam",
-    country_name == "Samoa" ~ "Western Samoa",
-    country_name == "Yemen, Rep." ~ "Yemen",
-    TRUE ~ country_name)) |>
-  left_join(frac, by = c("country_name" = "country")) |>
-  left_join(formalism, by = c("country_name" = "country")) |>
-  left_join(religion_final |> mutate(year = as.numeric(year)),
-            by = c("country_name" = "country", "year" = "year")) |>
-  group_by(country_name) |>
-  mutate(across(c(catholic:other),
-                ~case_when(
-                  year <= 1985 ~ .x[match(1970, year)],
-                  year > 1985 ~ .x[match(2000, year)])),
-         across(c(catholic_1900:other_1900),
-                ~first(.))) |>
-  rename(country = country_name) |>
-  relocate(country)
+  rename(wb_region = `World Region according to the World Bank`)
 
 pwt_mid = pwt_inter |>
-  mutate(formalism = ifelse(period == "1975-1984", allstpi1980,
-                            ifelse(period == "1985-1994", allstpi1990,
-                                   allstpi2000)),
-         ssa = ifelse(wb_region == "Sub-Saharan Africa" |
-                        isocode == "ZAR", 1, 0),
-         east_asia = ifelse(isocode %in% east_asia, 1, 0),
-         latam = ifelse(wb_region == "Latin America and Caribbean", 1, 0),
-         period_1 = ifelse(period == "1975-1984", 1, 0),
-         period_2 = ifelse(period == "1985-1994", 1, 0),
-         period_3 = ifelse(period == "1995-2004", 1, 0),
-         french_origin = ifelse(legal_origin == 1, 1, 0),
-         british_origin = ifelse(legal_origin == 2, 1, 0)) |>
-  select(-starts_with("allstpi")) |>
+  mutate(period_1 = ifelse(period == "1965-1974", 1, 0),
+         period_2 = ifelse(period == "1975-1984", 1, 0),
+         period_3 = ifelse(period == "1985-1994", 1, 0)) |>
   group_by(isocode) |>
   complete(year = full_seq(year, 1)) |>
   fill(yr_sch, .direction = "down") |>

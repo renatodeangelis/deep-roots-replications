@@ -44,13 +44,8 @@ pwt_final$pred_nonreligious <- predict(iv_nonreligious, pwt_final)
 pwt_final$pred_formalism <- predict(iv_formalism, pwt_final)
 
 kitchen_sink = lm(growth_rate ~ pred_initial_gdp + pred_pop + pred_investment +
-                    fertility + mortality + pred_trade + pred_inflation +
-                    pred_govt + east_asia + ssa + latam + pred_eastern +
-                    pred_hindu + pred_jewish + pred_muslim + pred_orthodox +
-                    pred_protestant + pred_nonreligious + pred_other +
-                    near_coast + tropical + language + ethnic +
-                    period_2 + period_3,
-                  data = pwt_final |> filter(!(isocode %in% c("GNQ", "CH2"))))
+                    pred_trade + pred_govt + period_2 + period_3,
+                  data = pwt_final)
 
 
 
