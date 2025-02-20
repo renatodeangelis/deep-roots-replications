@@ -1,0 +1,1438 @@
+############# BAYESIAN MODEL AVERAGING (BMA) WITH HIERARCHICAL MODEL PRIORS ###########
+########################### THIS VERSION:Feb 18, 2007 ###########################
+#######################################################################################
+#### Function for Permutations
+
+permutations <- function(x)
+  if (length(x) <= 1) as.matrix(x) else {
+    M <- NULL
+    for(i in 1:length(x)) 
+      M <- rbind(M, cbind(x[i], Recall(x[-i])))
+    M
+  } 
+
+
+### Functions for LS and 2SLS
+
+ls.reg<-function(x,y,intercept=T){
+	n<-nrow(x)
+	if(intercept){
+	const<-rep(1,n)
+	x<-as.matrix(cbind(const,x))}
+	else{x<-as.matrix(x)}
+	xxi<-solve(t(x)%*%x)
+	b<-xxi%*%t(x)%*%y
+	e<-(y-x%*%b)
+	u<-x*as.vector(e) 
+	sigmahat2<-(sum(e^2))/n
+	v0<-as.matrix(xxi)*sigmahat2
+	v<-xxi%*%t(u)%*%u%*%xxi
+	
+	tratio<-b/sqrt(diag(v0))
+	robust.tratio<-b/sqrt(diag(v))
+	pvalue<-2*(1-pnorm(abs(tratio)))
+	robust.pvalue<-2*(1-pnorm(abs(robust.tratio)))
+	coef.table<-data.frame(coef=b,ls.se=sqrt(diag(v0)),pvalue=pvalue,robust.se=sqrt(diag(v)),rob.pvalue=robust.pvalue)
+	list(coef.table=coef.table, sigma2=sigmahat2)
+	}
+
+tsls.reg<-function(x,y,z,weights=NULL){
+	# z instruments (both included and excluded)
+	# the constants should be included in x and z as required
+	# weights is a matrix of weights
+	n<-nrow(x)
+	x<-as.matrix(x)
+	z<-as.matrix(z)
+	
+if(!is.null(weights)){
+	m<-dim(weights)[1]
+	ind<-diag(n/m)
+	wi<-solve(weights)
+	si<-kronecker(wi,ind)
+	zzi<-ginverse(t(z)%*%z)
+   pz<-z%*%zzi%*%t(z)
+   xhat<-pz%*%x
+   A<-t(xhat)%*%si%*%xhat
+   B<-t(xhat)%*%si%*%y
+   Ai<-ginverse(A)
+   b.2sls<-Ai%*%B
+   e.2sls<-y-x%*%b.2sls
+   v0<-as.matrix(Ai)
+  
+   tratio<-b.2sls/sqrt(diag(v0))
+	pvalue<-2*(1-pnorm(abs(tratio)))
+	coef.table<-data.frame(tsls.coef=b.2sls,tsls.se=sqrt(diag(v0)),pvalue=pvalue)
+   list(coef.table=coef.table,robust.tsls.se=NULL,rob.pvalue=NULL,e.2sls=e.2sls,xhat=xhat)
+
+	}	
+else{
+   zz<-t(z)%*%z
+   #zzi<-solve(zz+0.001*diag(dim(zz)[2]))
+   zzi<-ginverse(zz)
+   pz<-z%*%zzi%*%t(z)
+   xhat<-pz%*%x
+   A<-t(x)%*%pz%*%x
+   B<-t(x)%*%pz%*%y
+   #Ai<-ginverse(A)
+   Ai<-solve(A+0.001*diag(dim(A)[2]))
+	b.2sls<-Ai%*%B
+   e.2sls<-y-x%*%b.2sls
+   u.2sls<-(pz%*%x)*as.vector(e.2sls)
+   sigmahat2<-(sum(e.2sls^2))/n
+  
+   v0<-sigmahat2*as.matrix(Ai)
+   v<-Ai%*%(t(u.2sls)%*%u.2sls)%*%Ai
+	tratio<-b.2sls/sqrt(diag(v0))
+	robust.tratio<-b.2sls/sqrt(diag(v))
+	pvalue<-2*(1-pnorm(abs(tratio)))
+	robust.pvalue<-2*(1-pnorm(abs(robust.tratio)))
+
+   coef.table<-data.frame(tsls.coef=b.2sls,tsls.se=sqrt(diag(v0)),pvalue=pvalue,
+                robust.tsls.se=sqrt(diag(v)),rob.pvalue=robust.pvalue)
+   list(coef.table=coef.table, tsls.sigma2=sigmahat2,e.2sls=e.2sls,xhat=xhat)
+}
+}
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+
+dkt.bma_function(x, y, z, hz, name.x, name.z,
+emethod="LS",info.crit="BIC",h, keep1, rel.var, joint.theo, wt = rep(1, length(y)), 
+nbest=nbest1,hier=1,q=0.50, OW=1,OR=1000, filo="out.txt")
+{
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+### 
+### Inputs:
+###  x				matrix of independent variables where first length(keep1) columns
+###					correspond to variables that are always kept in BMA. Do NOT include
+###					colum of ones for intercept. Also, group variables corresponding to
+###					each theory. For J theories, x should look like: (keep1, T_1,...,T_J).
+###  z				matrix of instrumental variables (all exogenous variables and instruments)
+###  hz          matrix index of instruments
+###  y				dependent variable
+###  name.x		name.cols(x)
+###  name.z		name.cols(z)
+###  h				vector giving the number of variables for each theory;
+###					e.g., c(p_1,...,p_J)
+###  nbest			See LEAPS function
+###  hier			1 for Hierarchical (dilution) model priors, 0 for Uniform model priors
+###  keep1			vector giving column numbers for x-variables that are always kept
+###					during BMA; e.g. keep1<-c(1,2,3,4,5).
+###  rel.var		vector giving the indices to the variables for extreme models
+###  joint.theo	binary matrix identifying which theories to look for joint.ppt
+###  wt			weights for regression
+###  OW          Performs Occam's Window on the posterior prob
+###  OR          Occam's window
+###  method		"LS", "2SLS" to be implemented
+###  info.crit   "BIC, "AIC"
+###
+### Outputs:
+###  prior			prior model probabilities defined by hierarchical structure
+###  postprob		posterior probabilities of the models selected
+###  label			labels identifying the models selected
+###  bic			values of bic for the models
+###  size			the number of independent variables in each of the models
+###  which			a logical matrix with one row per model and one column per 
+###					variable indicating whether that variable is in the model
+###  probne0		posterior probability that each variable is non-zero (in %)
+###  postmean		posterior mean of each coefficient (from model mixing)
+###  postsd		posterior standard deviation of each coefficient 
+###		  			(from model mixing) 
+###  ppt         posterior probability of theory m, calculated as 
+###              P(at least one theory variable included)=1-P(no theory variable included)
+###  ols			matrix (like the matrix which) giving the OLS estimate of
+###		  			each coefficient for each model
+###  se			matrix (like ols) giving the 
+###		  			corresponding standard errors for each model
+###  
+### Reference:
+###   Brock, William A., Durlauf, Steven N. and West, Kenneth D., 
+###   "Policy Evaluation in Uncertain Economic Environments"
+###   (October 2003). NBER Working Paper No. W10025.
+###
+#######################################################################################
+# Section 1
+
+sink(filo, append = F)
+
+print("BMA RUN DETAILS")
+stamp(string=date(), print=T) 
+print(" ")
+print("X:")
+print(name.x)
+print(" ")
+print("Z:")
+print(name.z)
+print(" ")
+
+print(paste("Method:",emethod))
+print(" ")
+print(paste("Hier:",hier))
+print(" ")
+print(paste("Info.Crit:", info.crit))
+print(" ")
+print(paste("NBEST:",nbest))
+print(" ")
+print("Theo.Defn:")
+print(h)
+print(" ")
+print("Keep:")
+print(keep1)
+print(" ")
+print("Rel.Var:")
+print(rel.var)
+print(" ")
+print("Joint.Theo:")
+print(joint.theo)
+print(" ")
+
+### Set original names of x-variables, if there are none to start with.
+
+nvar <- length(x[1,  ])
+  x <- data.frame(x)
+  if(is.null(dimnames(x))) dimnames(x) <- 
+list(NULL,paste("X",1:ncol(x),sep=""))
+  y <- as.numeric(y)
+  theo<-as.vector(h)
+  options(contrasts=c("contr.treatment","contr.treatment"))
+  
+### Removing NA's
+
+  x2 <- na.omit(data.frame(x))
+  used <- match(row.names(data.frame(x)), row.names(x2))
+  omitted <- seq(nrow(x))[is.na(used)]
+  if(length(omitted) > 0) {
+    wt <- wt [ - omitted]
+    x <- x2
+    y <- y[ - omitted]
+     warning(paste("There were ",length(omitted),"records deleted due to 
+NA's"))
+  }
+
+### Creating design matrix
+
+  cdf <-cbind.data.frame(y=y,x)
+  mm <- model.matrix(formula(cdf),data=cdf)[,-1,drop=F]
+  x <- mm
+
+	#print(x)
+###########################################################################################	
+### Section 2
+### Execute leaps and bounds algorithm (Note: the matrix "which" is generated here)
+  	
+	keep1<-as.vector(keep1) 
+	#print(length(keep1))
+	
+	## Refer to the "LEAPS" function description for "a" below 
+	## The x-matrix cannot have more than 31 or less than 3 columns
+	## Right now, Intercept is always generated and kept in BMA
+	## Also note, the "nbest" subsets will always be included (for subsets of any size)
+	## Need to set "nbest" very high to get ALL model combinations
+
+now<-proc.time()	
+
+ 	a <- leaps(x, y, wt = wt, method = "adjr2", keep=keep1, nbest=nbest, names = dimnames(x)[[2]], int=F, keep.int = F)
+    
+	#print("This is the output from LEAPS:")
+	#print(a)
+	#print("This is the WHICH matrix:")
+	#print(a$which)
+	#print ("The dimensions of WHICH (rows followed by columns) are:")
+	#print (nrow(a$which))
+	#print (ncol(a$which))
+	
+leap.time<-proc.time()-now
+#print("leap time")
+#print(leap.time)
+### Include the benchmark model (Add it to "which")
+	
+	bench<-c(rep(T, length(keep1)), rep(F, sum(theo)))
+    which <- as.matrix(rbind(bench, a$which))
+     size <- c(length(keep1), a$size)
+    label <- c("BENCHMARK", a$label)
+     lwhich <- nrow(which)
+     nmod<-nrow(which)
+
+	#print("This is the WHICH matrix after BENCHMARK added:")
+	#print(which)
+	#print ("The dimensions of WHICH (rows followed by columns) are:")
+	#print (nrow(which))
+	#print (ncol(which))
+	#print("This is NMOD")
+	#print(nmod)
+	
+	
+
+################################################################################
+###########################################################################################
+### Sections 3-4
+### Calculate prior vector ("prior") according to BDW's hierarchical structure
+### Note: Theory inclusion probability is set at q
+ntheo <- length(theo)
+prob <- matrix(0, lwhich, ntheo)
+denomr<-as.vector(rep(0, ntheo))
+
+x<-as.matrix(x)
+n<- nrow(x)
+sigma2<-as.vector(c(rep(0, lwhich)))
+
+######## Creating Sum of |R| for each Theory ######
+
+	  #print("Creating Sum of |R| for each Theory...")
+     
+	   i <- length(keep1)
+		for (s in (1:ntheo))
+        {
+			k <- (theo[s] + i)
+	      	fart<-as.matrix(x[,((i+1):k)])
+			lfart<-dim(fart)[2]
+			
+			indfart<-rep(0,lfart)
+			
+			bigfart<-numeric()
+			
+			for(d in 1:lfart){
+				indfart[d]<-1
+				bigfart<-as.matrix(rbind(bigfart,unique.data.frame(as.data.frame(permutations(indfart)))))
+			}								
+		
+		print("BIGFART")
+		print(bigfart)
+		print(dim(bigfart))
+		
+		for(rat in (1:dim(bigfart)[1])){			
+			bootleg<-as.matrix(fart[,as.logical(bigfart[rat,])])
+			denomr[s] <- denomr[s] + det(cor(bootleg,unbiased=F))
+		}
+
+			i <- k
+			#print(i)
+		}
+
+	#print("DENOMR")
+	#print(denomr)
+	
+######## Generating Priors ##############
+
+      for (j in (1:lwhich))
+      {
+	  ################################
+	  # record r2 for the new models 
+		#print(paste(c("Computing r2 and hierarchical priors for model",j)))
+       x.lm<-(x[,which[j, ,drop=F]])
+       
+  
+      if(emethod=="LS"){sigma2[j]<-sum((lsfit(x.lm,y,intercept=F)$residuals)^2)/nrow(x.lm)}
+    	if(emethod=="2SLS"){
+       	   # Which for IV purposes
+
+      			whichz<-which[j,(3+1):ncol(which)]
+
+              #print("This is WHICHZ:")
+              #print((whichz))
+				#print("This is HZ:")
+              #print((hz))
+
+				swh<-apply(hz,2,sum)
+				
+				#print("This is SWH:")
+				#print(swh)
+				
+      			twh<- t(t(hz)*whichz)
+
+				#print("This is TWH:")
+				#print(twh) 
+                
+      			 zindex<-numeric(0)
+
+              #print("This is ZINDEX:")
+              #print(zindex)
+
+              stwh <- apply(twh,2,sum)
+
+              #print("This is STWH:")
+              #print(stwh)
+
+              for (jj in (1:(length(stwh)))) {
+	              if(stwh[jj]==0){zindex <- c(zindex,(rep(1,swh[jj])-1))}
+	              else{zindex <-c(zindex,rep(1,swh[jj]))}
+	            
+				#print("This is ZINDEX in ForJJ:")
+				#print(zindex)
+				#print("This is length of ZINDEX")
+				#print(length(zindex))
+				
+				}
+	          zindex<-c(1,zindex)
+				zindex<-c(zindex, zindex, zindex)		#### FOR DIAGONAL Z CASE
+				
+				#print("This is final ZINDEX:")
+				#print(zindex)
+				
+              zstar<-z[,as.logical(zindex)]
+
+				#print("This is 1st 5 rows of ZSTAR:")
+				#print(zstar[1:5,])
+              #print("NAMES of ZSTAR:")
+              #print(name.cols(zstar))
+
+		        if(sum(whichz)==!0){sigma2[j]<-tsls.reg(x.lm,y,zstar)$tsls.sigma2}
+		         else {sigma2[j]<-sum((lsfit(x.lm,y,intercept=F)$residuals)^2)/nrow(x.lm)}
+				
+			}
+		
+################################
+	i <- length(keep1)
+		
+		for (s in (1:ntheo))
+        {
+				k <- (theo[s] + i)
+	       if(sum(as.numeric(which[j, ((i+1):k)])) > 0){
+			btlick<-as.matrix(x[,((i+1):k)])
+			boot<-as.matrix(btlick[,(which[j, ((i+1):k), drop=F])])
+			#boot<-as.matrix(x[,((i+1):k)])*as.numeric(which[j, ((i+1):k)])
+
+           prob[j, s] <- q*det(cor(boot,unbiased=F))/denomr[s]
+			#print(det(cor(boot,unbiased=F)))
+		 }    
+			else prob[j, s] <- (1-q)
+                     
+        
+			i <- k
+
+	#print(i)
+}
+
+}
+
+    prior <- matrix(0, lwhich, 1)
+       for(l in (1:lwhich)){
+       prior [l, 1] <- prod(prob[l, ])
+	## Note that "prior" is a column vector
+}
+
+# reweighting
+prior<-prior/(sum(prior))
+
+### Check that priors sum up to one
+
+print(paste("the sum of the priors is",sum(prior)))
+print(paste("The max prior probability ratio is",max(prior)))
+print(paste("The min prior probability ratio is",min(prior)))
+print(paste("The ratio of max/min prior probability ratio is",max(prior)/min(prior)))
+
+###########################################################################
+### Section 5
+### Calculate Info Criterion
+
+  n <- length(y)
+
+if(info.crit=="BIC"){bic <- n*log(sigma2) + size*log(n) + n*(log(2*pi)+1)}
+if(info.crit=="AIC"){bic <- n * log(sigma2) + size*2}
+
+	#print("BIC")
+	#print (bic)
+	#print (size) 
+	#print (r2)
+#############################################################################	
+### Section 6
+### Calculate posterior probability using BIC and "prior"
+if(hier>0){wbic <- exp(-0.5 * bic)*prior}
+else {wbic<- exp(-0.5 * bic)}
+
+# Using Occam's window
+if(OW==1){
+wbic.all<-wbic # save wbic for all models 
+
+occam <- ((max(wbic))/wbic)< OR
+occam.ex <- ((max(wbic))/wbic)> OR
+
+  sigma2 <- sigma2[occam]
+  size <- size[occam]
+  label <-label[occam]
+  which <- which[occam,  ,drop=F]
+
+  wbic.ex <- wbic[occam.ex]
+  wbic <- wbic[occam]
+
+
+  postprob <- wbic/sum(wbic)
+  #postprob[is.na(postprob)]_1
+
+  postprob.ex <- wbic.ex/sum(wbic.all)
+  #postprob.ex[is.na(postprob.ex)]_1
+
+  postprob.inc<-wbic/sum(wbic.all) #reweight postprob to be comparable
+  
+print(paste("Sum of posterior probabilities after OW",sum(postprob.inc)))
+print(paste("Sum of posterior probabilities  of the models discarded", sum(postprob.ex)))
+print(" ")
+print("WHICH after OW/OR")
+print(which)
+print(" ")
+print("SIZE")
+print(size)
+print(" ")
+}
+
+else{
+	# using ALL models
+  postprob <- wbic/sum(wbic)
+  #postprob[is.na(postprob)]_1
+}
+
+print("Posterior Probabilities")
+print(postprob)
+print(" ")
+##################################################################################################
+### Section 7
+### Calculate E[beta_i|D] and SD[beta_i|D] for each coefficient beta_i
+
+nmod<-nrow(which)
+
+  model.fits <- as.list(rep(0, nmod))
+
+  for(k in (1:nmod)) {					
+   
+	  if(emethod=="LS"){model.fits[[k]] <- ls.reg(x[, which[k,  ],drop=F], y,intercept=F)$coef.table} 
+	  
+	if(emethod=="2SLS"){
+       	   # Which for IV purposes
+
+      			whichz<-which[k,(3+1):ncol(which)]
+            	swh<-apply(hz,2,sum)
+				twh<- t(t(hz)*whichz)
+				
+				zindex<-numeric(0)
+              stwh <- apply(twh,2,sum)
+              for (jj in (1:(length(stwh)))) {
+	              if(stwh[jj]==0){zindex <- c(zindex,(rep(1,swh[jj])-1))}
+	              else{zindex <-c(zindex,rep(1,swh[jj]))}
+	            
+				
+				}
+	          zindex<-c(1,zindex)
+				zindex<-c(zindex, zindex, zindex)		#### FOR DIAGONAL Z CASE
+				
+              zstar<-z[,as.logical(zindex)]
+				
+				
+				if(sum(whichz)==!0){model.fits[[k]] <- tsls.reg(x[, which[k,  ],drop=F], y,zstar)$coef.table}
+			else{model.fits[[k]] <- ls.reg(x[, which[k,  ],drop=F], y,intercept=F)$coef.table}
+				
+			}
+
+}
+
+
+#print("This is MODEL.FITS")
+#print(model.fits)
+
+
+speed3<-proc.time()-now
+now<-proc.time()
+
+  Ebi<- rep(0, (nvar))
+  SDbi <- rep(0,(nvar))
+   EbiMk <- matrix(rep(0, nmod * (nvar)), nrow = nmod)
+  sebiMk <- matrix(rep(0, nmod * (nvar)), nrow = nmod)
+  
+	w.SDbi <- rep(0,(nvar)) # robust std err
+ 	w.sebiMk <- matrix(rep(0, nmod * (nvar)), nrow = nmod)
+
+  for(i in 1:(nvar)) {
+   
+      for(k in (1:nmod)) { 
+#print(paste("Computing the posterior mean and std dev for variable",i,"and model",k))
+
+### Find position of beta_i in model k
+if((i==1)||(which[k, i] == T)) {
+
+pos <- sum(which[k, (1:i)])
+  EbiMk[k, i] <- model.fits[[k]][pos , 1]
+  sebiMk[k, i] <- model.fits[[k]][pos , 2]
+  w.sebiMk[k, i] <- model.fits[[k]][pos , 4]		### Check this column number (4) against Model.fits again
+
+}
+}
+      
+   Ebi[i] <- as.numeric(sum(postprob * EbiMk[, i]))
+	SDbi[i] <- sqrt(sum(postprob*(sebiMk[,i]*sebiMk[,i])) + sum(postprob*((EbiMk[, i]-Ebi[i])*(EbiMk[, i]-Ebi[i]))))   
+	w.SDbi[i] <- sqrt(sum(postprob*(w.sebiMk[,i]*w.sebiMk[,i])) + sum(postprob*((EbiMk[, i]-Ebi[i])*(EbiMk[, i]-Ebi[i]))))   
+    
+ }
+  
+
+#print("This is EbiMk")
+#print(EbiMk)
+
+#print("This is sebiMk")
+#print(sebiMk)
+
+#print("This is w.sebiMk")
+#print(w.sebiMk)
+
+speed4<-proc.time()-now
+##################################################################################################
+### Section 8
+### Calculate Pr[beta_i != 0 | D] for each coefficient beta_i
+
+  probne0 <- t(which) %*% as.matrix(postprob)
+  nmod <- length(wbic)
+
+now<-proc.time()
+##################################################################################################
+### Section 9
+### Calculate posterior probabilities for theories
+
+tindex<-c(1:nvar)[-keep1]
+leg<-0
+
+jtheory<-matrix(0, nrow(which), ntheo)
+pexpvar<-rep(0,ntheo)
+pfit<-matrix(0,n,ntheo)
+
+for (k in 1:ntheo)   #### The purpose here is to get jtheory ####
+{
+
+which.theo<-as.matrix(1*which[,tindex[(leg+1):(leg+theo[k])]]) # “1” in which.theo is T in which
+if(dim(which.theo)[2]>1){jtheory[,k]<-apply(which.theo,1,sum)}   
+else{jtheory[,k]<-(which.theo)}
+	
+pfit[,k]<-as.matrix(x[,tindex[(leg+1):(leg+theo[k])]])%*%Ebi[tindex[(leg+1):(leg+theo[k])]]
+pexpvar[k]<-var(y,pfit[,k])/var(y)
+	
+leg<-leg+theo[k]
+}
+
+jtheory[jtheory>0]<-1   ### Replace non-zero elements with 1 ####
+#print("jtheory")
+#print(jtheory)
+
+ppt<-rep(0,ntheo)
+
+#### The purpose here is to get PPT ####
+
+for (k in 1:ntheo) {
+ppt[k]<-sum(postprob[jtheory[,k]==1])
+print(paste("Posterior probability of theory",k," is",ppt[k]))
+}
+
+joint.ppt<-rep(0,ncol(joint.theo))
+
+##### The purpose here is to get JOINT.PPT ###
+
+for (j in 1 : (ncol(joint.theo)))
+{
+yes.joint<-(jtheory%*%as.vector(joint.theo[,j ]))==sum(joint.theo[,j])
+#print("This is: jtheory%*%as.vector(joint.theo[,j ]):")
+#print(jtheory%*%as.vector(joint.theo[,j ]))
+#print("This is: sum(joint.theo[,j]:")
+#print(sum(joint.theo[,j]))
+#print("This is: yes.joint:")
+#print(yes.joint)
+joint.ppt[j]<-sum(postprob[yes.joint])
+#print("This is POSTPROB[YES.JOINT]:")
+#print(postprob[yes.joint])
+print(paste("Posterior probability of jointness of theories",j," is",joint.ppt[j]))
+} 
+
+
+##########################################################################################################
+### Section 10
+### Extreme Models
+
+relvar<-length(rel.var)   ### No. of Religiosity variables
+
+Ebimax<-matrix(0,relvar,(nvar))
+sebimax<-matrix(0,relvar,(nvar))
+sebimax.w<-matrix(0,relvar,(nvar))
+Ebimin<-matrix(0,relvar,(nvar))
+sebimin<-matrix(0,relvar,(nvar))
+sebimin.w<-matrix(0,relvar,(nvar))
+
+Eminrule<-matrix(0,relvar,(nvar))
+Sminrule<-matrix(0,relvar,(nvar))
+Emaxrule<-matrix(0,relvar,(nvar))
+Smaxrule<-matrix(0,relvar,(nvar))
+
+EminWrule<-matrix(0,relvar,(nvar))
+SminWrule.w<-matrix(0,relvar,(nvar))
+EmaxWrule<-matrix(0,relvar,(nvar))
+SmaxWrule.w<-matrix(0,relvar,(nvar))
+
+for (j in (1:relvar))		
+      {
+
+### MIN and MAX
+### (Individual) model with max coeff for Relig variable of interest
+
+
+dough<-EbiMk[,(rel.var[j])]   
+dough[dough==0]<--10000					
+maxEbi<-(max(dough))			
+maxmod<-(EbiMk[,(rel.var[j])])==maxEbi			
+
+chicken<-seq(length(maxmod))	
+maxmod<-chicken[maxmod]		
+
+if(maxEbi==-10000){
+Ebimax[j,]<-NA
+sebimax[j,]<-NA	
+sebimax.w[j,]<-NA	
+}
+else{
+Ebimax[j,]<-EbiMk[maxmod,]
+sebimax[j,]<-sebiMk[maxmod,]
+sebimax.w[j,]<-w.sebiMk[maxmod,]
+
+}
+### (Individual) model with the minimum coeff for the Relig variable of interest
+
+dough<-EbiMk[,(rel.var[j])]   
+
+dough[dough==0]<-10000					
+
+minEbi<-(min(dough))			
+minmod<-(EbiMk[,(rel.var[j])])==minEbi			
+
+wheat<-seq(length(minmod))	
+minmod<-wheat[minmod]		
+
+if(minEbi==10000){
+Ebimin[j,]<-NA
+sebimin[j,]<-NA	
+sebimin.w[j,]<-NA	
+
+}
+else{
+Ebimin[j,]<-EbiMk[minmod,]
+sebimin[j,]<-sebiMk[minmod,]
+sebimin.w[j,]<-w.sebiMk[minmod,]
+}
+
+### MINRULE and MAXRULE
+#### MINRULE
+
+rule<-(EbiMk[,(rel.var[j])]/sebiMk[,(rel.var[j])])
+pos.na<-is.na(rule)
+rule[pos.na]<-10000
+#print("RULE")
+#print(rule)
+	
+
+minrule<-min(rule)
+minrulelog<-(rule==minrule)
+
+#print("MINRULE")
+#print(minrule)
+
+#print("MINRULELOG B4")
+#print(minrulelog)
+
+butter<-seq(length(minrulelog))	
+minrulelog<-butter[minrulelog]		
+
+#print("MINRULELOG AFTER")
+#print(minrulelog)
+
+if(minrule==10000){
+Eminrule[j,]<-NA
+Sminrule[j,]<-NA}
+else{
+Eminrule[j,]<-EbiMk[minrulelog,]
+Sminrule[j,]<-sebiMk[minrulelog,]
+}
+#print("EbiMk[minrulelog,]")
+#print(EbiMk[minrulelog,])
+
+#### MAXRULE
+rule<-(EbiMk[,(rel.var[j])]/sebiMk[,(rel.var[j])])	#Resetting Rule for Maxrule
+pos.na<-is.na(rule)
+rule[pos.na]<--10000
+#print("RULE")
+#print(rule)
+
+maxrule<-max(rule)
+
+#print("MAXRULE")
+#print(maxrule)
+
+maxrulelog<- (rule==maxrule)
+
+#print("MAXRULELOG B4")
+#print(maxrulelog)
+
+milk<-seq(length(maxrulelog))	
+maxrulelog<-milk[maxrulelog]		
+
+#print("MAXRULELOG AFTER")
+#print(maxrulelog)
+
+if(maxrule==-10000){
+Emaxrule[j,]<-NA
+Smaxrule[j,]<-NA
+}
+else{
+Emaxrule[j,]<-EbiMk[maxrulelog,]
+Smaxrule[j,]<-sebiMk[maxrulelog,]
+}
+##############################################################
+# MIN MAX RULES for robust statistics
+rule.w<-(EbiMk[,(rel.var[j])]/w.sebiMk[,(rel.var[j])])
+pos.na<-is.na(rule.w)
+rule.w[pos.na]<-10000
+#print("ROBUST RULE")
+#print(rule.w)
+	
+minrule.w<-min(rule.w)
+minrulelog.w<-(rule.w==minrule)
+
+#print("ROBUST MINRULE")
+#print(minrule.w)
+
+#print("ROBUST MINRULELOG B4")
+#print(minrulelog.w)
+
+butter.w<-seq(length(minrulelog.w))	
+minrulelog.w<-butter.w[minrulelog.w]		
+
+#print("ROBUST MINRULELOG AFTER")
+#print(minrulelog.w)
+
+if(minrule.w==10000){
+EminWrule[j,]<-NA
+SminWrule.w[j,]<-NA}
+else{
+EminWrule[j,]<-EbiMk[minrulelog.w,]
+SminWrule.w[j,]<-w.sebiMk[minrulelog.w,]
+}
+#print("EbiMk[minrulelog.w,]")
+#print(EbiMk[minrulelog.w,])
+
+#### MAXRULE
+rule.w<-(EbiMk[,(rel.var[j])]/w.sebiMk[,(rel.var[j])])	#Resetting Rule for Maxrule
+pos.na<-is.na(rule.w)
+rule.w[pos.na]<--10000
+#print("ROBUST RULE")
+#print(rule.w)
+
+maxrule.w<-max(rule.w)
+
+#print("ROBUST MAXRULE")
+#print(maxrule.w)
+
+maxrulelog.w<- (rule.w==maxrule.w)
+
+#print("ROBUST MAXRULELOG B4")
+#print(maxrulelog.w)
+
+milk.w<-seq(length(maxrulelog.w))	
+maxrulelog.w<-milk[maxrulelog.w]		
+
+#print("ROBUST MAXRULELOG AFTER")
+#print(maxrulelog.w)
+
+if(maxrule.w==-10000){
+EmaxWrule[j,]<-NA
+SmaxWrule.w[j,]<-NA
+}
+else{
+EmaxWrule[j,]<-EbiMk[maxrulelog.w,]
+SmaxWrule.w[j,]<-w.sebiMk[maxrulelog.w,]
+}
+
+}
+
+#print("Eminrule")
+#print(Eminrule)
+#print("Sminrule")
+#print(Sminrule)
+
+#print("Emaxrule")
+#print(Emaxrule)
+#print("Smaxrule")
+#print(Smaxrule)
+
+#print("EminWrule")
+#print(EminWrule)
+#print("SminWrule.w")
+#print(SminWrule.w)
+
+#print("EmaxWrule")
+#print(EmaxWrule)
+#print("SmaxWrule.w")
+#print(SmaxWrule.w)
+
+
+
+##################################################################################################################
+### Section 11
+### Output
+
+  dimnames(which)_list(NULL,dimnames(x)[[2]])
+  dimnames(EbiMk)_dimnames(sebiMk)_list(NULL,c(dimnames(x)[[2]]))
+	
+	reg.names<-c(as.vector(dimnames(x)[[2]]))
+
+  list(regressors=reg.names, 
+   postmean = Ebi, postsd = SDbi, white.postsd=w.SDbi,
+   probne0 = c(probne0), ppt=ppt, joint.ppt=joint.ppt,label = label, 
+	prior = prior, bic = bic, size = size, postprob = postprob,	Ebimax = Ebimax, sebimax = sebimax, W.sebimax=sebimax.w,
+	Ebimin = Ebimin, sebimin = sebimin,W.sebimin = sebimin.w, Eminrule = Eminrule, Sminrule = Sminrule, Emaxrule = Emaxrule, Smaxrule = Smaxrule,
+	,EminWrule = EminWrule, W.SminWrule = SminWrule.w, EmaxWrule = EmaxWrule, W.SmaxWrule = SmaxWrule.w,ols = EbiMk, 
+	se = sebiMk,emethod=emethod,pexpvar=pexpvar)
+	
+}
+
+###########################################################################################################################
+###########################################################################################################################
+###########################################################################################################################
+
+data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\dkt-3p-stacked-02-15-07.xls", type = "EXCEL") 
+#tfp.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\tfpdata-stacked-caselli-1.xls", type = "EXCEL") 
+#tfp.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\tfpdata-stacked-caselli-2.xls", type = "EXCEL") 
+#tfp.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\tfpdata-stacked-klenow.xls", type = "EXCEL") 
+#tfp.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\tfpdata-stacked-easterly.xls", type = "EXCEL") 
+att.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\attitudes1.xls", type = "EXCEL") 
+tfp.data<-importData("C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\data\\tfpdata.sdd",type = "SPLUS") 
+
+codes<-data[,1:3]
+g<-data$g
+bm.g<-data$grch
+
+dum1<-data$dum6575
+dum2<-data$dum7585
+dum3<-data$dum8595
+bmsample<-data$bmsample
+
+easia<-data$easia
+ssafr<-data$ssafr
+latincar<-data$latincar
+############TFP data####################
+gtfp.hj<-tfp.data$gtfp.hj
+gtfplag.hj<-tfp.data$gtfplag.hj
+gyw<-tfp.data$gyw
+gywlag<-tfp.data$gywlag
+gky<-tfp.data$gky
+gkylag<-tfp.data$gkylag
+gkpc<-tfp.data$gkpc
+gkpclag<-tfp.data$gkpclag
+gh<-tfp.data$gh
+ghlag<-tfp.data$ghlag
+ghy<-tfp.data$ghy
+ghylag<-tfp.data$ghylag
+
+
+tfp.hj<-tfp.data$tfp.hj
+tfplag.hj<-tfp.data$tfplag.hj
+ywl<-tfp.data$ywl
+yw0<-ywl
+ywllag<-tfp.data$ywllag
+yw0lag<-ywllag
+ky<-tfp.data$ky
+kylag<-tfp.data$kylag
+kpc<-tfp.data$kpc
+kpclag<-tfp.data$kpclag
+h<-tfp.data$h
+hlag<-tfp.data$hlag
+
+############ SOLOW VARIABLES #############\
+gpop<-data$gpop
+gpoplag<-data$gpoplag
+inv<-data$inv
+invlag<-data$invlag
+uyrm25<-data$uyrm25
+uyrm25lag<-data$uyrm25lag
+y0<-data$y0
+y0lag<-data$y0lag
+
+lfshl<-data$lfshl
+lfshllag<-data$lfshllag
+
+
+bm.inv<-data$bm.inv
+bm.invlag<-data$bm.invlag
+bm.y0<-data$gdpch0
+bm.y0lag<-data$gdpch0lag
+bm.uyrm25<-data$bm.uyrm25
+
+
+############ ADDITIONAL BARRO PROXIMATES ##########
+bm.fertl<-data$fertl
+bm.lifee1r<-100*data$lifee1r
+bm.dp<-data$dp
+bm.gv<-data$gv
+bm.tot<-data$tot
+bm.openlag<-data$openlag
+bm.open<-data$open
+bm.totopen<-bm.open*bm.tot
+bm.opres<-data$opres
+bm.opreslag<-data$opreslag
+
+
+##########################################
+# Attitudes
+att.others<-att.data$others1
+att.gov<-att.data$gov1
+att.women<-att.data$women1
+att.rules<-att.data$rules1
+att.thrift<-att.data$thrift1
+att.market<-att.data$market1
+att.mktfair<-att.data$mktfair1
+
+
+
+########### RELIGIOSITY ###########
+# All the data below are based on the first three waves
+
+bm.chmolg<-data$bm.chmolg
+bm.heavenlg<-data$bm.heavenlg
+bm.helllg<-data$bm.helllg
+
+# OLD data constructed by Chris based on Barro to Durlauf data
+
+dkt1.chmolg<-data$dkt1.chmolg
+dkt1.heavenlg<-data$dkt1.heavenlg
+dkt1.helllg<-data$dkt1.helllg
+
+# Reconstructed by Ioanna and based on Barro to Durlauf data (same as dkt1)
+dkt2.chmolg<-data$dkt2.chmolg
+dkt2g.chmolg<-data$dkt2g.chmolg
+dkt2.heavenlg<-data$dkt2.heavenlg
+dkt2.helllg<-data$dkt2.helllg
+
+# Reconstructed by Ioanna and based on updated data but restricted as Barro to only the first three waves
+dkt3.chmolg<-data$dkt3.chmolg
+dkt3.heavenlg<-data$dkt3.heavenlg
+dkt3.helllg<-data$dkt3.helllg
+
+# constructed by Ioanna and based on updated data using all four waves and barro formula
+
+dkt4.chmolg<-data$dkt4.chmolg
+dkt4.heavenlg<-data$dkt4.heavenlg
+dkt4.helllg<-data$dkt4.helllg
+
+
+# constructed by Ioanna and based on simple avg of all three waves and the 4th only the first are not available  (no issp)
+dkt5.chmolg<-data$dkt5.chmolg
+dkt5.heavenlg<-data$dkt5.heavenlg
+dkt5.helllg<-data$dkt5.helllg
+
+
+# constructed by Ioanna and based on simple avg of all four waves (no issp data) 
+dkt6.chmolg<-data$dkt5.chmolg
+dkt6.heavenlg<-data$dkt5.heavenlg
+dkt6.helllg<-data$dkt5.helllg
+
+########### RELIGION SHARES #############
+bm.catha<-data$bm.catha
+bm.easrel2a<-data$bm.easrel2a
+bm.hindua<-data$bm.hindua
+bm.jewsa<-data$bm.jewsa
+bm.muslima<-data$bm.muslima
+bm.ortha<-data$bm.ortha
+bm.othrela<-data$bm.othrela
+bm.prota<-data$bm.prota
+bm.nonrel<-data$bm.nonrel
+bm.relplura<-data$bm.relplura
+
+bm.cathalag<-data$bm.cathalag
+bm.easrel2alag<-data$bm.easrel2alag
+bm.hindualag<-data$bm.hindualag
+bm.jewsalag<-data$bm.jewsalag
+bm.muslimalag<-data$bm.muslimalag
+bm.orthalag<-data$bm.orthalag
+bm.othrelalag<-data$bm.othrelalag
+bm.protalag<-data$bm.protalag
+bm.relpluralag<-data$bm.relpluralag
+
+buddis1900<-data$buddis1900
+cath1900<-data$cath1900
+conf1900<-data$conf1900
+easrel1900<-data$easrel1900
+hindu1900<-data$hindu1900
+jews1900<-data$jews1900
+muslim1900<-data$muslim1900
+orth1900<-data$orth1900
+othchrist1900<-data$othchrist1900
+othrel1900<-data$othrel1900
+prot1900<-data$prot1900
+shin1900<-data$shin1900
+nonrel1900<-data$nonrel1900
+relplur1900<-data$relplur1900
+easrel11900<-data$easrel11900
+easrel21900<-data$easrel21900
+othrel21900<-othrel1900+othchrist1900
+
+buddis1900a<-data$buddis1900a
+cath1900a<-data$cath1900a
+conf1900a<-data$conf1900a
+easrel1900a<-data$easrel1900a
+hindu1900a<-data$hindu1900a
+jews1900a<-data$jews1900a
+muslim1900a<-data$muslim1900a
+orth1900a<-data$orth1900a
+othchrist1900a<-data$othchrist1900a
+othrel1900a<-data$othrel1900a
+prot1900a<-data$prot1900a
+shin1900a<-data$shin1900a
+relplur1900a<-data$relplur1900a
+easrel11900a<-data$easrel11900a
+easrel21900a<-data$easrel21900a
+othrel21900a<-othrel1900a+othchrist1900a
+
+
+buddis<-data$buddis
+cath<-data$cath
+conf<-data$conf
+easrel<-data$easrel
+hindu<-data$hindu
+jews<-data$jews
+muslim<-data$muslim
+orth<-data$orth
+othchrist<-data$othchrist
+othrel<-data$othrel
+prot<-data$prot
+shin<-data$shin
+nonrel<-data$nonrel
+relplur<-data$relplur
+easrel1<-data$easrel1
+easrel2<-data$easrel2
+othrel2<-othrel+othchrist
+
+
+buddisa<-data$buddisa
+catha<-data$catha
+confa<-data$confa
+easrela<-data$easrela
+hindua<-data$hindua
+jewsa<-data$jewsa
+muslima<-data$muslima
+ortha<-data$ortha
+othchrista<-data$othchrista
+othrela<-data$othrela
+prota<-data$prota
+shina<-data$shina
+relplura<-data$relplura
+easrel1a<-data$easrel1a
+easrel2a<-data$easrel2a
+othrel2a<-othrela+othchrista
+
+buddisalag<-data$buddisa.lag
+cathalag<-data$catha.lag
+confalag<-data$confa.lag
+easrelalag<-data$easrela.lag
+hindualag<-data$hindua.lag
+jewsalag<-data$jewsa.lag
+muslimalag<-data$muslima.lag
+orthalag<-data$ortha.lag
+othchristalag<-data$othchrista.lag
+othrelalag<-data$othrela.lag
+protalag<-data$prota.lag
+shinalag<-data$shina.lag
+relpluralag<-data$relplura.lag
+easrel1alag<-data$easrel1a.lag
+easrel2alag<-data$easrel2a.lag
+othrel2alag<-othrela+othchristalag
+
+
+
+########### GEOGRAPHY #############
+lcr100km<-data$lcr100km
+kgatrstr<-data$kgatrstr
+
+########## ETHNIC FRACTIONALIZATION ###############
+ethtens<-data$ethtens2
+lang<-data$lang
+ethnic<-data$ethnic
+
+########## POLITICAL INSTITUTIONS #################
+bm.prights<-data$democ
+bm.prightslag<-data$democlag
+bm.prights2<-bm.prights*bm.prights
+bm.prightslag2<-bm.prightslag*bm.prightslag
+
+prights<-data$prights
+prightslag<-data$prightslag
+prights2<-prights^2
+prightslag2<-prightslag^2
+
+
+######### PROPERTY RIGHTS INSTITUTIONS ############
+bm.rule<-data$bm.rule
+rule<-data$rule2
+excondec<-data$excondec
+exconlag<-data$exconlag
+exprsk<-data$exprsk2
+burql<-data$burql2
+kkz96<-data$kkz96
+
+
+######### CONTRACTING INSTITUTIONS ###############
+check<-data$check
+complex<-data$complex
+
+
+########### INSTRUMENTS#############################
+bm.brit<-data$brit
+bm.french<-data$french
+bm.spanpor<-data$spanpor
+bm.othcol<-data$othcol
+
+state.rel70<-data$state.rel70
+state.reg70<-data$state.reg70
+setmortl<-data$setmortl
+setmortla<-data$setmortla
+euro<-data$euro
+frecivil<-data$frecivil
+britcommon<-data$britcommon
+
+
+NT<-nrow(data)
+n<-NT/3
+ncol(data)
+
+const<-matrix(1,NT,1)
+
+#######################################################################################################
+############################# CHOOSE YOUR DATA ########################################################
+#######################################################################################################
+############################  IOANNA TO NOTE 1
+#######################################################################################################
+#######################################################################################################
+
+
+#g<-gtfp
+#g<-gky
+#g<-gh
+g<-gyw
+#g<-bm.g
+#g<-g
+
+h<-as.vector(c(4,3,7,3,2,2,4))  
+keep1<-c(1,2,3)  
+
+hz<-cbind(rbind(rep(1,24),rep(0,24)),c(1,1))  # No. of Cols of hz should be equal to # of X's excluding time dummies or const
+
+
+x<-cbind(dum1,dum2,dum3,
+yw0,gpop,lfshl,inv,
+#bm.lifee1r,bm.fertl,
+bm.opres,bm.gv,bm.dp,
+easrel2a,hindua,jewsa,muslima,ortha,prota,othrel2a,
+easia,ssafr,latincar,
+lcr100km,kgatrstr,
+lang,ethtens,
+#prights,prights2,
+exprsk,excondec,kkz96,check
+)
+
+z<-cbind(const,
+yw0lag,gpoplag,lfshllag,invlag,
+#bm.lifee1r,bm.fertl, 
+bm.opreslag,bm.gv,bm.spanpor,
+easrel21900a,hindu1900a,jews1900a,muslim1900a,orth1900a,prot1900a,othrel21900a,
+#easrel2alag,hindualag,jewsalag,muslimalag,orthalag,protalag,othrel2alag,
+easia,ssafr,latincar,
+lcr100km,kgatrstr,
+lang,ethtens,
+#prightslag,prightslag2,
+exprsk,exconlag, kkz96, britcommon,frecivil
+)
+
+
+jt<-rep(1,length(h)) 
+
+
+name.x<-name.cols(x)
+name.z<-name.cols(z)
+
+
+
+###########################################################################################
+###########################################################################################
+
+p<-dim(z)[2]
+z1<-z[1:n,]
+z2<-z[((n+1):(2*n)),]
+z3<-z[((2*n+1):(3*n)),]
+
+k<-dim(x)[2]
+x1<-x[1:n,]
+x2<-x[((n+1):(2*n)),]
+x3<-x[((2*n+1):(3*n)),]
+
+g1<-g[1:n]
+g2<-g[(n+1):(2*n)]
+g3<-g[(2*n+1):(3*n)]
+
+datagood1<-data.frame(codes[(1:208),],g1,x1,z1)
+datagood1<-na.exclude(datagood1)
+
+datagood2<-data.frame(codes[(1:208),],g2,x2,z2)
+datagood2<-na.exclude(datagood2)
+
+datagood3<-data.frame(codes[(1:208),],g3,x3,z3)
+datagood3<-na.exclude(datagood3)
+
+sample1<-datagood1[,1:3]
+sample2<-datagood2[,1:3]
+sample3<-datagood3[,1:3]
+
+g1<-datagood1[,4]
+g2<-datagood2[,4]
+g3<-datagood3[,4]
+
+x1<-datagood1[,(5:(k+4))]
+x2<-datagood2[,(5:(k+4))]
+x3<-datagood3[,(5:(k+4))]
+
+dum1<-c(x1[,1],x2[,1],x3[,1])
+dum2<-c(x1[,2],x2[,2],x3[,2])
+dum3<-c(x1[,3],x2[,3],x3[,3])
+
+x1<-x1[,-(1:3)]
+x2<-x2[,-(1:3)]
+x3<-x3[,-(1:3)]
+
+z1<-datagood1[,((k+5):(4+k+p))]
+z2<-datagood2[,((k+5):(4+k+p))]
+z3<-datagood3[,((k+5):(4+k+p))]
+
+z1<-as.matrix(z1)
+z2<-as.matrix(z2)
+z3<-as.matrix(z3)
+
+n1<-dim(z1)[1]
+n2<-dim(z2)[1]
+n3<-dim(z3)[1]
+
+zeros1<-matrix(0,n1,p)
+zeros2<-matrix(0,n2,p)
+zeros3<-matrix(0,n3,p)
+
+#allowing for different instruments and different coefficients in the RF equations 
+
+bigz<-cbind(rbind(z1,zeros2,zeros3),rbind(zeros1,z2,zeros3),
+rbind(zeros1,zeros2,z3))
+
+#imposing the restrictions for the same coef in the system besides the constant
+
+bigx<-cbind(dum1=dum1,dum2=dum2,dum3=dum3,rbind(x1,x2,x3))
+dim(bigx)
+
+bigy<-c(g1,g2,g3)
+
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
+
+
+#jt1<-c(0,0,0,0,1,1,0,0,0,0,0,0)  # Rel and Shares
+#jt2<-c(0,0,0,0,1,0,1,0,0,0,0,0)  # Rel and Region
+#jt3<-c(0,0,0,0,1,0,0,1,0,0,0,0)  # Rel and GEO
+#jt4<-c(0,0,0,0,1,0,0,0,1,0,0,0)  # Rel and FRAC
+#jt5<-c(0,0,0,0,1,0,0,0,0,1,0,0)  # Rel and PI
+#jt6<-c(0,0,0,0,1,0,0,0,0,0,1,0)  # Rel and PR
+#jt7<-c(0,0,0,0,1,0,0,0,0,0,0,1)  # Rel and CI
+#jt8<-c(1,1,1,1,0,1,1,1,1,1,1,1)  # all but REL
+#jt9<-c(0,0,0,0,0,1,1,0,0,0,0,0)  # shares and regions
+#jt10<-c(0,0,0,0,0,1,0,1,0,0,0,0)  # GEO and shares
+#jt11<-c(0,0,0,0,0,1,0,0,1,0,0,0)  # FRAC and shares
+#jt12<-c(0,0,0,0,0,1,0,0,0,1,0,0)  # PI and shares
+#jt13<-c(0,0,0,0,0,1,0,0,0,0,1,0)  # PR and shares
+#jt14<-c(0,0,0,0,0,1,0,0,0,0,0,1)  # CI and shares
+#jt15<-c(1,1,1,1,1,0,1,1,1,1,1,1)  # All but shares
+#jt16<-c(1,0,0,0,1,0,0,0,0,0,0,0)  # Rel and Y0
+#jt17<-c(0,1,0,0,1,0,0,0,0,0,0,0)  # Rel and Capital 
+#jt18<-c(0,0,1,0,1,0,0,0,0,0,0,0)  # Rel and demography
+#jt19<-c(0,0,0,1,1,0,0,0,0,0,0,0)  # Rel and Policy
+#jt20<-c(1,0,0,0,0,1,0,0,0,0,0,0)  # Shares and Y0
+#jt21<-c(0,1,0,0,0,1,0,0,0,0,0,0)  # Shares and Capital 
+#jt22<-c(0,0,1,0,0,1,0,0,0,0,0,0)  # Shares and demography
+#jt23<-c(0,0,0,1,0,1,0,0,0,0,0,0)  # Shares and Policy
+
+joint.theo<-as.matrix(jt)
+
+
+#joint.theo<-as.matrix(cbind(jt1,jt2,jt3,jt4,jt5,jt6,jt7,jt8,jt9,jt10,jt11,jt12,jt13,jt14,jt15,
+#jt16,jt17,jt18,jt19,jt20,jt21,jt22,jt23))
+
+###########################################################################################################
+out.dkt<-dkt.bma(bigx, bigy,bigz, hz, name.x, name.z,joint.theo=joint.theo,
+emethod="2SLS",info.crit="BIC", h, keep1, rel.var=c(10,11,12), 
+nbest=1000, hier=1, q=0.50, OW=0,OR=1000,
+filo="C:\\Documents and Settings\\Andros Kourtellos\\My Documents\\dkt-tfp\\dkt1-gyw-solowVARY-demoOUT.txt")
+
+
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
+
+#method
+#out.dkt$emethod
+
+#posterior ppt, joint, and variable inclusion probabilities
+#round(out.dkt$ppt,5)
+#round(out.dkt$joint.ppt,5)
+
+print(" ")
+cbind(out.dkt$regressors,round(out.dkt$probne0,5))
+print(" ")
+
+#Table of coefficients
+
+data.frame(variables=out.dkt$regressors, post.means=round(out.dkt$postmean,5),post.se=round(out.dkt$postsd,5), 
+post.tratio=round((out.dkt$postmean/out.dkt$postsd),5),white.post.se=round(out.dkt$white.postsd,5),
+white.post.tratio=round((out.dkt$postmean/out.dkt$white.postsd),5))	
+
+
+print(" ")
+print("The variation that each theory explains")
+round(out.dkt$pexpvar,5)
+print(" ")
+round(data.frame(Ebimin=t(out.dkt$Ebimin),SEbimin=t(out.dkt$sebimin)),5)
+print(" ")
+round(data.frame(Ebimax=t(out.dkt$Ebimax),SEbimax=t(out.dkt$sebimax)),5)
+print(" ")
+round(data.frame(Ebimin=t(out.dkt$Ebimin),W.SEbimin=t(out.dkt$W.sebimin)),5)
+print(" ")
+round(data.frame(Ebimax=t(out.dkt$Ebimax),W.SEbimax=t(out.dkt$W.sebimax)),5)
+print(" ")
+round(data.frame(Eminrule=t(out.dkt$Eminrule),Sminrule=t(out.dkt$Sminrule)),5)
+print(" ")
+round(data.frame(Emaxrule=t(out.dkt$Emaxrule), Smaxrule=t(out.dkt$Smaxrule)),5)
+print(" ")
+round(data.frame(EminWrule=t(out.dkt$EminWrule),W.Sminrule=t(out.dkt$W.SminWrule)),5)
+print(" ")
+round(data.frame(EmaxWrule=t(out.dkt$EmaxWrule), W.Smaxrule=t(out.dkt$W.SmaxWrule)),5)
+print(" ")
+print("Classical LS")
+out.ls <- ls.reg(bigx, bigy, intercept = F)
+print(round(out.ls$coef.table, 5))
+print(" ")
+print("Classical 2SLS")
+out.2sls <- tsls.reg(bigx, bigy, bigz)
+print(round(out.2sls$coef.table, 5))
+print(" ")
+print("Sample 1:")
+print(sample1)
+print(" ")
+print("Sample 2:")
+print(sample2)
+print(" ")
+print("Sample 3:")
+print(sample3)
+print(" ")
+print(paste("The sample size for the 1st period is ", nrow(sample1)))
+print(paste("The sample size for the 2nd period is ", nrow(sample2)))
+print(paste("The sample size for the 3rd period is ", nrow(sample3)))
+stamp(string=date(), print=T) 
+sink()
+#warnings()

@@ -1,0 +1,284 @@
+
+data<-importData("C:\\Documents and Settings\\andros\\My Documents\\My Dropbox\\dkt-ej\\codes-11-22-07\\dkt-ej-to-be-distributed.xls", type = "EXCEL") 
+#tfp.data<-importData("C:\\Users\\Andros\\Dropbox\\dkt-ej\\codes-11-22-07\\tfpdata.sdd",type = "SPLUS") 
+
+codes<-data[,1:3]
+g<-data$g
+
+dum1<-data$dum6575
+dum2<-data$dum7585
+dum3<-data$dum8595
+
+easia<-data$easia
+ssafr<-data$ssafr
+latincar<-data$latincar
+
+gk<-data$gk
+gklag<-data$gklag
+
+gyw<-data$gyw
+
+gh<-data$gh
+ghlag<-data$ghlag
+
+gtfp<-data$gtfp
+
+hc0l <-data$hc0l
+hc0llag <-data$hc0llag
+
+ke=gk*hc0l
+he=gh*hc0l
+
+kelag=gklag*hc0llag
+helag=ghlag*hc0llag
+
+
+yw0l<-data$yw0l
+yw0llag<-data$yw0llag
+gpop<-data$gpop
+gpoplag<-data$gpoplag
+lfshl<-data$lfshl
+lfshllag<-data$lfshllag
+inv<-data$inv
+invlag<-data$invlag
+
+bm.fertl<-data$fertl
+bm.lifee1r<-data$lifee1r
+
+bm.opres<-data$opres
+bm.opreslag<-data$opreslag
+bm.gv<-data$gv
+bm.gvlag<-data$gvlag
+bm.dp<-data$dp
+bm.spanpor<-data$spanpor
+
+easrel2a<-data$easrel2a
+easrel21900a<-data$easrel21900a
+hindua<-data$hindua
+hindu1900a<-data$hindu1900a
+jewsa<-data$jewsa
+jews1900a<-data$jews1900a
+muslima<-data$muslima
+muslim1900a<-data$muslim1900a
+ortha<-data$ortha
+orth1900a<-data$orth1900a
+prota<-data$prota
+prot1900a<-data$prot1900a
+othrel2a<-data$othrel2a
+othrel21900a<-data$othrel21900a
+
+lcr100km<-data$lcr100km
+kgatrstr<-data$kgatrstr
+
+ethtens<-data$ethtens
+lang<-data$lang
+
+exprsk<-data$exprsk
+excondec<-data$excondec
+exconlag<-data$exconlag
+kkz96<-data$kkz96
+check<-data$check
+britcommon<-data$britcommon
+frecivil<-data$frecivil
+
+########################################
+
+
+NT<-nrow(data)
+n<-NT/3
+ncol(data)
+
+const<-matrix(1,NT,1)
+
+#######################################################################################################
+############################# CHOOSE YOUR DATA ########################################################
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
+###  Section  A:   Income per capita growth regression 
+
+#g<-gyw
+
+#x<-cbind(dum1,dum2,dum3,
+#yw0l,gpop,lfshl,inv,
+#bm.lifee1r,bm.fertl,
+#bm.opres,bm.gv,bm.dp,
+#easrel2a,hindua,jewsa,muslima,ortha,prota,othrel2a,
+#easia,ssafr,latincar,
+#lcr100km,kgatrstr,
+#lang,ethtens,
+#exprsk,excondec,kkz96,check)
+
+#z<-cbind(const,
+#yw0llag,gpoplag,lfshllag,invlag,
+#bm.lifee1r,bm.fertl,
+#bm.opreslag,bm.gvlag,bm.spanpor,
+#easrel21900a,hindu1900a,jews1900a,muslim1900a,orth1900a,prot1900a,othrel21900a,
+#easia,ssafr,latincar,
+#lcr100km,kgatrstr,
+#lang,ethtens,
+#exprsk,exconlag, kkz96, britcommon,frecivil)
+
+#####################################################
+####  Section B:   TFP growth regression  ####
+
+#g<-gtfp
+
+#x<-cbind(dum1,dum2,dum3,
+#yw0l,hc0l,
+#gk,gh,ke,he,
+#bm.lifee1r,bm.fertl,
+#bm.opres,bm.gv,bm.dp,
+#easrel2a,hindua,jewsa,muslima,ortha,prota,othrel2a,
+#easia,ssafr,latincar,
+#lcr100km,kgatrstr,
+#lang,ethtens,
+#exprsk,excondec,kkz96,check
+#)
+
+#z<-cbind(const,
+#yw0llag,hc0llag,
+#gklag,ghlag,kelag, helag,
+#bm.lifee1r,bm.fertl, 
+#bm.opreslag,bm.gv,bm.spanpor,
+#easrel21900a,hindu1900a,jews1900a,muslim1900a,orth1900a,prot1900a,othrel21900a,
+#easia,ssafr,latincar,
+#lcr100km,kgatrstr,
+#lang,ethtens,
+#exprsk,exconlag,kkz96,britcommon,frecivil
+#)
+
+#####################################################
+####  Section C:  Factor Accumulation regression  ####
+# g<-gk
+ g<-gh
+
+x<-cbind(dum1,dum2,dum3,
+yw0l,hc0l,
+bm.lifee1r,bm.fertl,
+bm.opres,bm.gv,bm.dp,
+easrel2a,hindua,jewsa,muslima,ortha,prota,othrel2a,
+easia,ssafr,latincar,
+lcr100km,kgatrstr,
+lang,ethtens,
+exprsk,excondec,kkz96,check
+)
+
+z<-cbind(const,
+yw0llag,hc0llag,
+bm.lifee1r,bm.fertl, 
+bm.opreslag,bm.gv,bm.spanpor,
+easrel21900a,hindu1900a,jews1900a,muslim1900a,orth1900a,prot1900a,othrel21900a,
+easia,ssafr,latincar,
+lcr100km,kgatrstr,
+lang,ethtens,
+exprsk,exconlag,kkz96,britcommon,frecivil
+)
+
+
+
+
+name.x<-name.cols(x)
+name.z<-name.cols(z)
+
+
+
+###########################################################################################
+###########################################################################################
+
+p<-dim(z)[2]
+z1<-z[1:n,]
+z2<-z[((n+1):(2*n)),]
+z3<-z[((2*n+1):(3*n)),]
+
+k<-dim(x)[2]
+x1<-x[1:n,]
+x2<-x[((n+1):(2*n)),]
+x3<-x[((2*n+1):(3*n)),]
+
+g1<-g[1:n]
+g2<-g[(n+1):(2*n)]
+g3<-g[(2*n+1):(3*n)]
+
+datagood1<-data.frame(codes[(1:208),],g1,x1,z1)
+datagood1<-na.exclude(datagood1)
+
+datagood2<-data.frame(codes[(1:208),],g2,x2,z2)
+datagood2<-na.exclude(datagood2)
+
+datagood3<-data.frame(codes[(1:208),],g3,x3,z3)
+datagood3<-na.exclude(datagood3)
+
+sample1<-datagood1[,1:3]
+sample2<-datagood2[,1:3]
+sample3<-datagood3[,1:3]
+
+g1<-datagood1[,4]
+g2<-datagood2[,4]
+g3<-datagood3[,4]
+
+x1<-datagood1[,(5:(k+4))]
+x2<-datagood2[,(5:(k+4))]
+x3<-datagood3[,(5:(k+4))]
+
+dum1<-c(x1[,1],x2[,1],x3[,1])
+dum2<-c(x1[,2],x2[,2],x3[,2])
+dum3<-c(x1[,3],x2[,3],x3[,3])
+
+x1<-x1[,-(1:3)]
+x2<-x2[,-(1:3)]
+x3<-x3[,-(1:3)]
+
+z1<-datagood1[,((k+5):(4+k+p))]
+z2<-datagood2[,((k+5):(4+k+p))]
+z3<-datagood3[,((k+5):(4+k+p))]
+
+z1<-as.matrix(z1)
+z2<-as.matrix(z2)
+z3<-as.matrix(z3)
+
+n1<-dim(z1)[1]
+n2<-dim(z2)[1]
+n3<-dim(z3)[1]
+
+zeros1<-matrix(0,n1,p)
+zeros2<-matrix(0,n2,p)
+zeros3<-matrix(0,n3,p)
+
+#allowing for different instruments and different coefficients in the RF equations 
+
+bigz<-cbind(rbind(z1,zeros2,zeros3),rbind(zeros1,z2,zeros3),
+rbind(zeros1,zeros2,z3))
+
+#imposing the restrictions for the same coef in the system besides the constant
+
+bigx<-cbind(dum1=dum1,dum2=dum2,dum3=dum3,rbind(x1,x2,x3))
+dim(bigx)
+
+bigy<-c(g1,g2,g3)
+country <- rbind(sample1,sample2,sample3)
+balanceddata <- data.frame(country,bigy, bigx, bigz)
+#######################################################################################################
+exportData(balanceddata,"C:\\Documents and Settings\\andros\\My Documents\\My Dropbox\\dkt-ej\\codes-11-22-07\\datasetgh.xls", "EXCEL") 
+exportData(balanceddata,"C:\\Documents and Settings\\andros\\My Documents\\My Dropbox\\dkt-ej\\codes-11-22-07\\datasetgh.sdd", "SPLUS")
+
+
+#######################################################################################################
+#######################################################################################################
+
+print(" ")
+print("Sample 1:")
+print(sample1)
+print(" ")
+print("Sample 2:")
+print(sample2)
+print(" ")
+print("Sample 3:")
+print(sample3)
+print(" ")
+print(paste("The sample size for the 1st period is ", nrow(sample1)))
+print(paste("The sample size for the 2nd period is ", nrow(sample2)))
+print(paste("The sample size for the 3rd period is ", nrow(sample3)))
+stamp(string=date(), print=T) 
+sink()
+#warnings()
