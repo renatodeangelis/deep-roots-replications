@@ -269,14 +269,53 @@ mod_dp_85 = ivreg(dp ~ easia + ssafr + latincar + lcr100km + kgatrstr + lang +
                     exconlag + frecivil + britcommon,
                   data = data |> filter(dum8595 == 1))
 
-#output_solow = stargazer(mod_yw0l, mod_gpop, mod_lifee1r, mod_fertl, mod_gk, mod_gh,
-#          type = "latex", 
-#          omit = c("dum6575", "dum7585", "Constant"), 
-#          keep.stat = c("n", "rsq"), 
-#          digits = 3, 
-#          column.sep.width = "0pt")
+# Significance tables
 
+models = list(mod_iv, mod_iv_65, mod_iv_75, mod_iv_85, mod_yw0l, mod_yw0l_65,
+              mod_yw0l_75, mod_yw0l_85, mod_gk, mod_gk_65, mod_gk_75, mod_gk_85,
+              mod_gh, mod_gh_65, mod_gh_75, mod_gh_85, mod_opres, mod_opres_65,
+              mod_opres_75, mod_opres_85, mod_gv, mod_gv_65, mod_gv_75, mod_gv_85,
+              mod_dp, mod_dp_65, mod_dp_75, mod_dp_85)
+model_names = c("mod_iv", "mod_iv_65", "mod_iv_75", "mod_iv_85", "mod_yw0l", "mod_yw0l_65",
+                "mod_yw0l_75", "mod_yw0l_85", "mod_gk", "mod_gk_65", "mod_gk_75", "mod_gk_85",
+                "mod_gh", "mod_gh_65", "mod_gh_75", "mod_gh_85", "mod_opres", "mod_opres_65",
+                "mod_opres_75", "mod_opres_85", "mod_gv", "mod_gv_65", "mod_gv_75", "mod_gv_85",
+                "mod_dp", "mod_dp_65", "mod_dp_75", "mod_dp_85")
+results = lapply(models, tidy)
+results = Map(cbind, results, model = model_names)
+df = bind_rows(results) |>
+  relocate(model)
 
+df_religions = df |>
+  filter(term %in% c("easrel2a", "hindua", "jewsa", "muslima", "ortha", "prota",
+                     "othrel2a")) |>
+  dplyr::select(-statistic, -std.error, -estimate) |>
+  pivot_wider(names_from = term, values_from = p.value) |>
+  mutate(across(where(is.numeric),
+                ~ case_when(
+                  . < 0.01 ~ paste0(format(round(., 3), nsmall = 3), "***"),
+                  . < 0.05 ~ paste0(format(round(., 3), nsmall = 3), "**"),
+                  . < 0.1 ~ paste0(format(round(., 3), nsmall = 3), "*"),
+                  TRUE ~ format(round(., 3), nsmall = 3)
+                ))) |>
+  kbl(format = "latex", booktabs = TRUE, digits = 3) |>
+  column_spec(1, bold = TRUE)
+
+df_remaining = df |>
+  filter(term %in% c("lcr100km", "kgatrstr", "lang", "ethtens", "exprsk",
+                     "kkz96", "excondec", "check")) |>
+  dplyr::select(-statistic, -std.error, -estimate) |>
+  pivot_wider(names_from = term, values_from = p.value) |>
+  mutate(across(where(is.numeric),
+                ~ case_when(
+                  . < 0.01 ~ paste0(format(round(., 3), nsmall = 3), "***"),
+                  . < 0.05 ~ paste0(format(round(., 3), nsmall = 3), "**"),
+                  . < 0.1 ~ paste0(format(round(., 3), nsmall = 3), "*"),
+                  TRUE ~ format(round(., 3), nsmall = 3)
+                ))) |>
+  relocate(model, excondec, exprsk, check, kkz96, lang, ethtens, lcr100km, kgatrstr) |>
+  kbl(format = "latex", booktabs = TRUE, digits = 3) |>
+  column_spec(1, bold = TRUE)
 
 
 
