@@ -178,6 +178,40 @@ mod6 = glm(deptotal ~ pog1349 + ln_pop_33 + frac_jew_33 + frac_prot_25,
            family = poisson)
 mod6_res = coeftest(mod6, vcov = vcovCL(mod6, type = "HC0"))
 
+stargazer_table = stargazer(
+  mod1, mod2, mod3, mod4, mod5, mod6,
+  title = "Regression Results",
+  label = "tab:regression-results",
+  dep.var.labels = c("Nazi Vote 1928", "Nazi Vote 1928", "Std PCA 20C AS", "Std PCA 20C AS", "Deportation Total", "Deportation Total"),
+  column.labels = c("OLS", "Quantile", "OLS Std.", "Quantile Std.", "Poisson", "Poisson Alt."),
+  covariate.labels = c(
+    "Pogrom 1349", 
+    "ln(Population 1928)", 
+    "Jewish Fraction 1925", 
+    "Protestant Fraction 1925",
+    "Std ln(Population 1933)",
+    "Std Jewish Fraction 1933",
+    "Std Protestant Fraction 1925",
+    "ln(Population 1933)",
+    "ln(Jewish Population 1933)",
+    "Jewish Fraction 1933"
+  ),
+  keep.stat = c("n", "rsq", "adj.rsq", "f", "aic"),
+  se = list(
+    sqrt(diag(vcovCL(mod1, cluster = kreis_nr))),
+    NULL,  # quantile regression SEs are handled differently
+    sqrt(diag(vcovCL(mod3, cluster = kreis_nr))),
+    NULL,  # quantile regression SEs are handled differently
+    sqrt(diag(vcovCL(mod5, type = "HC0"))),
+    sqrt(diag(vcovCL(mod6, type = "HC0")))
+  ),
+  type = "latex",
+  header = FALSE,
+  model.numbers = TRUE,
+  omit = NULL,
+  omit.stat = NULL
+)
+
 ## Table 3
 
 bf_final = read_dta("datasets/4-satyanath-voigtlander-voth/Dataset_Bowling_Replication_JPE.dta") |>
@@ -378,11 +412,31 @@ mod11_res = coeftest(mod11,
                                             !is.na(landweimar)) |>
                                      pull(landweimar)))
 
-
-
-
-
-
-
-
+stargazer_table2 = stargazer(
+  mod7, mod8, mod9, mod10, mod11,
+  title = "Regression Results",
+  label = "tab:regression-results",
+  dep.var.labels = "NS Party Entry (Standardized)",
+  column.labels = c("OLS Unstable", "Quantile Unstable", "Alternative 1", "Alternative 2", "Interactions"),
+  covariate.labels = c(
+    "Clubs per capita", "Government Stability", "Clubs × Stability",
+    "Catholic Share", "ln(Population)", "Blue Collar Share",
+    "Catholic Share × Stability", "ln(Population) × Stability", 
+    "Blue Collar × Stability"
+  ),
+  keep.stat = c("n", "rsq", "adj.rsq", "f"),
+  se = list(
+    sqrt(diag(vcovCL(mod7, type = "HC0"))),
+    NULL,  # quantile regression SEs are handled differently
+    sqrt(diag(vcovCL(mod9, type = "HC0"))),
+    sqrt(diag(vcovCL(mod10, type = "HC0"))),
+    sqrt(diag(vcovCL(mod11, cluster = bf_final |>
+                       filter(!is.na(pcNSentry_PRS_std), !is.na(clubs_all_pc), !is.na(govt_stability),
+                              !is.na(i_assoc_stability), !is.na(share_cath25), !is.na(lnpop25),
+                              !is.na(bcollar25), !is.na(i_share_cath25_stab), !is.na(i_lnpop25_stab),
+                              !is.na(i_bcollar25_stab), !is.na(landweimar)) |> pull(landweimar))))
+  ),
+  type = "latex",
+  header = FALSE
+)
 
