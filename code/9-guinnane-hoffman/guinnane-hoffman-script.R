@@ -1,5 +1,5 @@
-packages = c("dplyr", "readr", "haven", "lmtest", "sandwich",
-             "quantreg", "stargazer")
+packages = c("dplyr", "readr", "tidyr", "haven", "lmtest", "sandwich",
+             "quantreg", "stargazer", "recipes")
 sapply(packages, library, character.only = TRUE)
 
 ## Table 1
@@ -180,82 +180,153 @@ mod6_res = coeftest(mod6, vcov = vcovCL(mod6, type = "HC0"))
 
 ## Table 3
 
-bf_data = read_dta("datasets/4-satyanath-voigtlander-voth/Dataset_Bowling_Replication_JPE.dta")
+bf_final = read_dta("datasets/4-satyanath-voigtlander-voth/Dataset_Bowling_Replication_JPE.dta") |>
+  mutate(lnpop25 = log(pop25))
 
-bf_final = bf_data |>
-  mutate(lnNSentry_total = log(1 + NSentry_total), # log entry rates
-         lnNSentry_FU_total = log(1 + NSentry_FU_total),
-         lnclubs_all = log(clubs_all),
-         pop2 = (pop25 / 1000)^2, # population
-         pop3 = (pop25 / 1000)^3,
-         lnpop25 = log(pop25),
-         pop25_quintiles = ntile(pop25, 5), # size quintile dummy
-         lnpop_density = log(pop_density), # population density
-         dummy_maps = as.integer(area_source == "Maps"),
-         i_popden_maps = lnpop_density * dummy_maps)
+# Principal components (original)
 
-# Principal components
-
-# First run PCA on government stability variables
-pca_govt <- bf_final |>
+pca_govt = bf_final |>
   select(govt_longest_perc, party_longest_perc, weimar_coalition_perc) |>
   na.omit() |>
   prcomp(center = TRUE, scale. = TRUE)
 
-# Predict scores and add to dataset
-# In R, we need to identify rows used in PCA to match scores back correctly
-bf_final <- bf_final |>
-  mutate(row_id = row_number())
+bf_final = bf_final |>
+  mutate(row_id = row_number(),
+         govt_stability = NA_real_,
+         govt_stability_AM = NA_integer_)
 
-pca_govt_rows <- bf_final |>
+pca_govt_rows = bf_final |>
   select(govt_longest_perc, party_longest_perc, weimar_coalition_perc, row_id) |>
   na.omit() |>
   pull(row_id)
 
-# Add govt_stability scores to the dataframe
-bf_final <- bf_final |>
-  mutate(govt_stability = NA_real_)
-
-# Add first principal component as the score
-pca_govt_scores <- predict(pca_govt)[, 1]
+pca_govt_scores = predict(pca_govt)[, 1]
 for(i in seq_along(pca_govt_rows)) {
   bf_final$govt_stability[pca_govt_rows[i]] <- pca_govt_scores[i]
 }
 
-# Create govt_stability_AM variable using ntile
-# First for non-Preußen states
-bf_final <- bf_final |>
-  mutate(govt_stability_AM = NA_integer_)
-
-# Get observations where landweimar is not "Preußen" and govt_stability is not NA
-non_preussen <- bf_final |>
+non_preussen = bf_final |>
   filter(landweimar != "Preußen" & !is.na(govt_stability))
 
-# Create 2 quantiles for these observations
 if(nrow(non_preussen) > 0) {
-  # Calculate quantiles
-  quantiles <- non_preussen |>
+  quantiles = non_preussen |>
     pull(govt_stability) |>
     ntile(2)
   
-  # Assign quantiles to govt_stability_AM for these observations
   for(i in 1:nrow(non_preussen)) {
-    row <- non_preussen$row_id[i]
-    bf_final$govt_stability_AM[bf_final$row_id == row] <- quantiles[i]
+    row = non_preussen$row_id[i]
+    bf_final$govt_stability_AM[bf_final$row_id == row] = quantiles[i]
   }
   
-  # Subtract 1 from govt_stability_AM for non-Preußen states (to make 0-based)
-  bf_final <- bf_final |>
+  bf_final = bf_final |>
     mutate(govt_stability_AM = ifelse(!is.na(govt_stability_AM), 
                                       govt_stability_AM - 1, 
                                       govt_stability_AM))
 }
 
-# Set govt_stability_AM to 0 for Preußen state
-bf_final <- bf_final |>
+bf_final = bf_final |>
   mutate(govt_stability_AM = ifelse(landweimar == "Preußen", 0, govt_stability_AM)) |>
+  select(-row_id) |>
+  mutate(i_assoc_stability = govt_stability * clubs_all_pc,
+         i_share_cath25_stab = share_cath25 * govt_stability,
+         i_lnpop25_stab = lnpop25 * govt_stability,
+         i_bcollar25_stab = bcollar25 * govt_stability,
+         i_share_cath25_stabAM = share_cath25 * govt_stability_AM,
+         i_lnpop25_stabAM = lnpop25 * govt_stability_AM,
+         i_bcollar25_stabAM = bcollar25 * govt_stability_AM,
+         i_clubs_stability_AM = govt_stability_AM * clubs_all_pc,
+         i_clubs_Prussia = Prussia * clubs_all_pc)
+
+# Principal components (dropping third element)
+
+pca_govt1 = bf_final |>
+  select(govt_longest_perc, party_longest_perc) |>
+  na.omit() |>
+  prcomp(center = TRUE, scale. = TRUE)
+
+bf_final = bf_final |>
+  mutate(row_id = row_number(),
+         govt_stability1 = NA_real_,
+         govt_stability_AM1 = NA_integer_)
+
+pca_govt_rows1 = bf_final |>
+  select(govt_longest_perc, party_longest_perc, row_id) |>
+  na.omit() |>
+  pull(row_id)
+
+pca_govt_scores1 = predict(pca_govt1)[, 1]
+for(i in seq_along(pca_govt_rows1)) {
+  bf_final$govt_stability1[pca_govt_rows1[i]] <- pca_govt_scores1[i]
+}
+
+non_preussen = bf_final |>
+  filter(landweimar != "Preußen" & !is.na(govt_stability1))
+
+if(nrow(non_preussen) > 0) {
+  quantiles = non_preussen |>
+    pull(govt_stability1) |>
+    ntile(2)
+  
+  for(i in 1:nrow(non_preussen)) {
+    row = non_preussen$row_id[i]
+    bf_final$govt_stability_AM1[bf_final$row_id == row] = quantiles[i]
+  }
+  
+  bf_final = bf_final |>
+    mutate(govt_stability_AM1 = ifelse(!is.na(govt_stability_AM1), 
+                                      govt_stability_AM1 - 1, 
+                                      govt_stability_AM1))
+}
+
+bf_final = bf_final |>
+  mutate(govt_stability_AM1 = ifelse(landweimar == "Preußen", 0, govt_stability_AM1)) |>
   select(-row_id)
 
+# Principal components (median state stable)
+
+pca_govt2 = bf_final |>
+  select(govt_longest_perc, party_longest_perc, weimar_coalition_perc) |>
+  na.omit() |>
+  prcomp(center = TRUE, scale. = TRUE)
+
+bf_final = bf_final |>
+  mutate(row_id = row_number(),
+         govt_stability2 = NA_real_,
+         govt_stability_AM2 = NA_integer_)
+
+pca_govt_rows2 = bf_final |>
+  select(govt_longest_perc, party_longest_perc, weimar_coalition_perc, row_id) |>
+  na.omit() |>
+  pull(row_id)
+
+pca_govt_scores2 = predict(pca_govt2)[, 1]
+for(i in seq_along(pca_govt_rows2)) {
+  bf_final$govt_stability2[pca_govt_rows2[i]] <- pca_govt_scores2[i]
+}
+
+non_preussen = bf_final |>
+  filter(landweimar != "Preußen" & !is.na(govt_stability2))
+
+if(nrow(non_preussen) > 0) {
+  quantiles = non_preussen |>
+    mutate(inverted_stability = -govt_stability2) |>
+    pull(inverted_stability) |>
+    ntile(2)
+  
+  for(i in 1:nrow(non_preussen)) {
+    row = non_preussen$row_id[i]
+    bf_final$govt_stability_AM2[bf_final$row_id == row] = quantiles[i]
+  }
+  
+  bf_final = bf_final |>
+    mutate(govt_stability_AM2 = ifelse(!is.na(govt_stability_AM2), 
+                                      govt_stability_AM2 - 1, 
+                                      govt_stability_AM2))
+}
+
+bf_final = bf_final |>
+  mutate(govt_stability_AM2 = ifelse(landweimar == "Preußen", 0, govt_stability_AM2)) |>
+  select(-row_id)
 
 # Regressions
 
@@ -263,6 +334,51 @@ bf_final <- bf_final |>
 
 mod7 = lm(pcNSentry_PRS_std ~ clubs_all_pc + share_cath25 + lnpop25 + bcollar25,
           data = bf_final |> filter(Prussia == 0, govt_stability_AM == 0))
+mod7_res = coeftest(mod7, vcov = vcovCL(mod7, type = "HC0"))
+
+mod8 = rq(pcNSentry_PRS_std ~ clubs_all_pc + share_cath25 + lnpop25 + bcollar25,
+          data = bf_final |> filter(Prussia == 0, govt_stability_AM == 0))
+mod8_res = summary(mod8, se = "boot")
+
+mod9 = lm(pcNSentry_PRS_std ~ clubs_all_pc + share_cath25 + lnpop25 + bcollar25,
+          data = bf_final |> filter(Prussia == 0, govt_stability_AM1 == 0))
+mod9_res = coeftest(mod9, vcov = vcovCL(mod9, type = "HC0"))
+
+mod10 = lm(pcNSentry_PRS_std ~ clubs_all_pc + share_cath25 + lnpop25 + bcollar25,
+          data = bf_final |> filter(Prussia == 0, govt_stability_AM2 == 0))
+mod10_res = coeftest(mod10, vcov = vcovCL(mod10, type = "HC0"))
+
+mod11 = lm(pcNSentry_PRS_std ~ clubs_all_pc + govt_stability + i_assoc_stability +
+             share_cath25 + lnpop25 + bcollar25 + i_share_cath25_stab +
+             i_lnpop25_stab + i_bcollar25_stab,
+           data = bf_final |> filter(!is.na(pcNSentry_PRS_std),
+                                     !is.na(clubs_all_pc),
+                                     !is.na(govt_stability),
+                                     !is.na(i_assoc_stability),
+                                     !is.na(share_cath25),
+                                     !is.na(lnpop25),
+                                     !is.na(bcollar25),
+                                     !is.na(i_share_cath25_stab),
+                                     !is.na(i_lnpop25_stab),
+                                     !is.na(i_bcollar25_stab),
+                                     !is.na(landweimar)))
+mod11_res = coeftest(mod11,
+                     vcov = vcovCL(mod11, 
+                                   cluster = bf_final |>
+                                     filter(!is.na(pcNSentry_PRS_std),
+                                            !is.na(clubs_all_pc),
+                                            !is.na(govt_stability),
+                                            !is.na(i_assoc_stability),
+                                            !is.na(share_cath25),
+                                            !is.na(lnpop25),
+                                            !is.na(bcollar25),
+                                            !is.na(i_share_cath25_stab),
+                                            !is.na(i_lnpop25_stab),
+                                            !is.na(i_bcollar25_stab),
+                                            !is.na(landweimar)) |>
+                                     pull(landweimar)))
+
+
 
 
 
