@@ -3,7 +3,7 @@ library(dplyr)
 library(ivreg)
 library(stargazer)
 
-data = read_excel("datasets/dkt-ej-to-be-distributed.xls") |>
+data1 = read_excel("datasets/dkt-ej-to-be-distributed.xls") |>
   mutate(across(dum6575:ssafr, as.numeric))
 
 legend = read_excel("datasets/dkt-ej-to-be-distributed.xls", sheet = 2)

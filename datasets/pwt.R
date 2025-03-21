@@ -91,7 +91,7 @@ govt = read_csv("Datasets/govt-consumption-to-gdp.csv", skip = 3) |>
     names_to = "year",
     values_to = "govt_consumption") |>
   janitor::clean_names() |>
-  filter(year >= 1970 & year <= 2004,
+  filter(year >= 1960 & year <= 2004,
          !(country_name %in% names_to_remove)) |>
   select(-indicator_name, -indicator_code)
 
