@@ -10,7 +10,6 @@ pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
   group_by(countrycode) |>
   mutate(rgdppw = rgdpna / pop,
          period = case_when(
-           year %in% 1960:1969 ~ "1960-1969",
            year %in% 1970:1979 ~ "1970-1979",
            year %in% 1980:1989 ~ "1980-1989",
            year %in% 1990:1999 ~ "1990-1999",
@@ -18,7 +17,7 @@ pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
            year %in% 2010:2019 ~ "2010-2019")) |>
   relocate(period, .after = year) |>
   filter(!is.na(rgdppw),
-         year >= 1960 & year <= 2020) |>
+         year >= 1970 & year <= 2020) |>
   ungroup()
 
 pwt_6 = read_excel("datasets/dkt-ej-to-be-distributed.xls") |>
@@ -33,9 +32,7 @@ pwt_6 = read_excel("datasets/dkt-ej-to-be-distributed.xls") |>
                               TRUE ~ kgatrstr),
          isocode = case_when(isocode == "GER" ~ "DEU",
                              isocode == "ROM" ~ "ROU",
-                             TRUE ~ isocode),
-         kkz96 = case_when(isocode == "MAC" ~ 1.33,
-                           TRUE ~ kkz96)) |>
+                             TRUE ~ isocode)) |>
   filter(!is.na(kkz96), !is.na(kgatrstr), !is.na(lang))
 
 names_to_remove = c(
@@ -64,26 +61,26 @@ names_to_remove = c(
   "Not classified", "St. Martin (French part)", "Sint Maarten (Dutch part)")
 
 worldbank = WDI(country = "all", indicator = c(
-  "NE.EXP.GNFS.KD",  # Exports of goods and services (constant 2010 US$)
-  "NE.IMP.GNFS.KD",  # Imports of goods and services (constant 2010 US$)
-  "NE.CON.GOVT.KD",  # Government consumption (constant 2010 US$)
+  "NE.EXP.GNFS.ZS",  # Exports of goods and services (constant 2010 US$)
+  "NE.IMP.GNFS.ZS",  # Imports of goods and services (constant 2010 US$)
+  "NE.CON.GOVT.ZS",  # Government consumption (constant 2010 US$)
   "SE.XPD.TOTL.GD.ZS",  # Education spending (% of GDP)
-  "MS.MIL.XPND.GD.ZS",  # Military spending (% of GDP)
+  "MS.MIL.XPND.ZS",  # Military spending (% of GDP)
   "NY.GDP.MKTP.KD",  # GDP (constant 2010 US$)
   "SP.POP.TOTL",     # Total Population
   "AG.SRF.TOTL.K2",   # Land Area (sq. km)
   "FP.CPI.TOTL.ZG", # CPI % change
   "NE.GDI.FTOT.ZS" # Investment as % of GDP
-), start = 1960, end = 2020, extra = TRUE) |>
+), start = 1970, end = 2020, extra = TRUE) |>
   select(-iso2c, -status, -lastupdated, -capital, -longitude, -latitude, -income, -lending) |>
   filter(!(country %in% names_to_remove))
 
 wb_data = worldbank |>
   group_by(country, year) |>
   filter(NE.GDI.FTOT.ZS > 0) |>
-  mutate(mil_spending = (MS.MIL.XPND.GD.ZS / 100) * NY.GDP.MKTP.KD,
-         gv = (NE.CON.GOVT.KD) / NY.GDP.MKTP.KD,
-         trade_ratio = (NE.EXP.GNFS.KD + NE.IMP.GNFS.KD) / NY.GDP.MKTP.KD,
+  mutate(gv = NE.CON.GOVT.ZS,
+         gv_net = NE.CON.GOVT.ZS - SE.XPD.TOTL.GD.ZS - MS.MIL.XPND.ZS,
+         trade_ratio = NE.EXP.GNFS.ZS + NE.IMP.GNFS.ZS,
          inv = log(NE.GDI.FTOT.ZS)) |>
   filter(!is.na(trade_ratio), !is.na(AG.SRF.TOTL.K2))
 
