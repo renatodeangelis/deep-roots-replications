@@ -101,7 +101,7 @@ pwt_inter = pwt_init |>
   filter(year_count == 10) |>
   select(-year_count) |>
   mutate(yinit = rgdppw[year == min(year)],
-        gy = (rgdppw[year == max(year)] - rgdppw[year == min(year)]) /
+         gy = (rgdppw[year == max(year)] - rgdppw[year == min(year)]) /
            rgdppw[year == min(year)],
          gh = (hc[year == max(year)] - hc[year == min(year)]) /
            hc[year == min(year)],
@@ -116,7 +116,9 @@ pwt_inter = pwt_init |>
   mutate(pc = log(pc),
          yinit = log(yinit)) |>
   ungroup() |>
-  left_join(pwt_6, by = c("countrycode" = "isocode"))
+  left_join(pwt_6, by = c("countrycode" = "isocode")) |>
+  group_by(countrycode) |>
+  fill(country, region, .direction = "up")
 
 write_csv(pwt_inter, "datasets/data_final.csv")
 
