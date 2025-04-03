@@ -21,7 +21,7 @@ pwt_init = read_excel("Datasets/pwt1001.xlsx") |>
   ungroup()
 
 pwt_6 = read_excel("datasets/dkt-ej-to-be-distributed.xls") |>
-  mutate(across(dum6575:ssafr, as.numeric)) |>
+  mutate(across(dum6575:ssafr, as.numeric)) #|>
   filter(dum8595 == 1) |>
   select(isocode, kkz96, kgatrstr, lang) |>
   mutate(kgatrstr = case_when(isocode == "SGP" ~ 1,
@@ -111,7 +111,8 @@ pwt_inter = pwt_init |>
          gtfp = (rtfpna[year == max(year)] - rtfpna[year == min(year)]) /
            rtfpna[year == min(year)],
          gpop = (pop[year == max(year)] - pop[year == min(year)]) /
-           pop[year == min(year)]) |>
+           pop[year == min(year)],
+         opres = opres / 100) |>
   summarise(across(where(is.numeric), \(x) mean(x, na.rm = FALSE)), .groups = "drop") |>
   mutate(pc = log(pc),
          yinit = log(yinit)) |>

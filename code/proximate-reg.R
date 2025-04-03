@@ -5,8 +5,8 @@ library(kableExtra)
 library(stargazer)
 
 data = read_csv("datasets/data_final.csv") |>
-  mutate(dp = cpi / 100,
-         dp1 = log(cpi + 0.26))
+  mutate(dp = log(cpi + 0.26),
+         opres = opres / 100)
 
 # Table 1:
 
@@ -79,7 +79,7 @@ mod48 = lm(gy ~ gv + yinit + hc + inv + gpop + period + opres +
              dp, data = data)
 
 models_opres    <- list(mod21, mod22, mod23, mod24, mod25, mod26, mod27, mod28)
-models_dp <- list(mod31, mod32, mod33, mod34, mod35, mod36, mod37, mod38)
+models_dp     <- list(mod31, mod32, mod33, mod34, mod35, mod36, mod37, mod38)
 models_gv     <- list(mod41, mod42, mod43, mod44, mod45, mod46, mod47, mod48)
 
 all_models <- list(models_opres, models_dp, models_gv)
